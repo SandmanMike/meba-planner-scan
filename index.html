@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0D12">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MEBA Planner Scan">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%230B0D12%27/%3E%3Cpath d=%27M5 24V9l5.5 9L16 9l5.5 9L27 9v15%27 fill=%27none%27 stroke=%27%234f8ef7%27 stroke-width=%273%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<title>MEBA Planner · Horizon Scan (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#0B0D12; --card:#12151d; --card2:#1a1e29; --line:#232836;
+  --text:#f4f6fb; --mut:#9aa3b5; --acc:#4f8ef7; --teal:#2dd4bf; --ind:#6366f1;
+  --warn:#ff8b1a; --bad:#c0392b;
+  --font:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.45}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;min-height:100vh;
+  background:radial-gradient(1200px 500px at 50% -200px,rgba(79,142,247,.16),transparent 70%),var(--bg)}
+main{max-width:640px;margin:0 auto;padding:0 14px 40px}
+.top{max-width:640px;margin:0 auto;padding:14px 14px 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:20px;letter-spacing:.2px}
+.brand .m{color:var(--acc)} .brand .p{color:var(--text);font-weight:500;margin-left:6px}
+.tag{font-size:12px;color:var(--mut);font-family:var(--mono)}
+h1{font-size:24px;line-height:1.2;margin:0 0 6px;letter-spacing:-.3px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin:0 0 10px;font-weight:600}
+p{margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+.mut{color:var(--mut)} .fine{font-size:12px;color:var(--mut)}
+.btn{appearance:none;border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;font-weight:600;
+  padding:11px 14px;border-radius:12px;cursor:pointer;min-height:44px}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.teal{background:rgba(45,212,191,.14);border-color:rgba(45,212,191,.5);color:var(--teal)}
+.btn.warn{background:rgba(255,139,26,.12);border-color:rgba(255,139,26,.5);color:var(--warn)}
+.btn.big{width:100%;font-size:17px;padding:14px}
+.btn.ghost{background:transparent}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>.grow{flex:1 1 140px}
+ol.steps{margin:0 0 14px;padding-left:20px;color:var(--mut)} ol.steps li{margin:3px 0} ol.steps b{color:var(--text);font-weight:600}
+.camwrap{position:relative;width:min(100%,calc(46vh * var(--ar,0.5625)));aspect-ratio:var(--ar,0.5625);margin:0 auto;
+  background:#000;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.camwrap video,.camwrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.camwrap video{object-fit:fill}
+.hud{position:absolute;left:8px;right:8px;top:8px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;
+  font-family:var(--mono);font-size:12px}
+.chip{background:rgba(11,13,18,.72);border:1px solid rgba(255,255,255,.12);padding:3px 8px;border-radius:999px;backdrop-filter:blur(4px)}
+.hint{position:absolute;left:8px;right:8px;bottom:8px;text-align:center;pointer-events:none}
+.hint span{display:inline-block;background:rgba(11,13,18,.8);border:1px solid rgba(255,255,255,.12);padding:4px 10px;border-radius:10px;font-size:12px}
+.hint span.bad{border-color:var(--warn);color:var(--warn)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.stat .k{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px}
+.stat .v{font-family:var(--mono);font-size:17px;font-weight:500}
+.seg{display:inline-flex;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--mut);font:inherit;font-weight:600;padding:8px 14px;border-radius:9px;min-height:38px;cursor:pointer}
+.seg button.on{background:var(--acc);color:#fff}
+canvas.chart{width:100%;display:block;border-radius:12px;background:#0e1118;border:1px solid var(--line)}
+label.f{display:block;margin:12px 0 4px;font-weight:600}
+label.f small{font-weight:400;color:var(--mut);margin-left:6px}
+input[type=range]{width:100%;accent-color:var(--acc);height:28px}
+select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+.val{font-family:var(--mono);color:var(--acc)}
+details{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+details summary{cursor:pointer;font-weight:600;color:var(--text)}
+textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px solid var(--line);border-radius:10px;font-family:var(--mono);font-size:12px;padding:8px}
+.note{border-left:3px solid var(--ind);padding:8px 12px;background:rgba(99,102,241,.08);border-radius:0 10px 10px 0;margin:10px 0;color:var(--mut);font-size:13px}
+.note.warn{border-left-color:var(--warn);background:rgba(255,139,26,.08)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin:6px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.demo{color:var(--warn);font-weight:700}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="m">MEBA</span><span class="p">Planner</span></div>
+  <div class="tag">Horizon scan · prototype v0.1</div>
+</header>
+<main>
+
+<section id="intro" class="card">
+  <h1>Scan the sky your telescope can really see</h1>
+  <p class="mut">Stand at your scope, sweep the phone slowly through 360°, and MEBA Planner builds a horizon mask: the lowest clear altitude at every compass direction. Export it for NINA or use it in the planner.</p>
+  <ol class="steps">
+    <li><b>Tap Start</b> and allow motion/orientation and camera access.</li>
+    <li>Hold the phone <b>upright (portrait)</b> at the height of your scope, a few feet from steel and the mount.</li>
+    <li>Turn <b>slowly</b> all the way around, keeping the skyline in the middle of the frame.</li>
+    <li>Check the chart for gaps, fix with <b>Manual mode</b>, then export.</li>
+  </ol>
+  <button id="btnStart" class="btn primary big">Start scan</button>
+  <div style="height:8px"></div>
+  <button id="btnDemo" class="btn ghost big" style="font-size:14px">Try demo (simulated data, no sensors)</button>
+  <p class="fine" id="introMsg" style="margin-top:10px"></p>
+  <p class="fine">Your camera frames are analysed on this phone and never uploaded. This prototype works best in daylight or twilight on a clear sky.</p>
+</section>
+
+<section id="live" hidden>
+  <div class="camwrap" id="camwrap">
+    <video id="vid" playsinline muted autoplay></video>
+    <canvas id="ov"></canvas>
+    <div class="hud"><span class="chip" id="hudAz">AZ --</span><span class="chip" id="hudSrc">heading: --</span></div>
+    <div class="hint"><span id="hintTxt">Starting…</span></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">Heading</div><div class="v" id="stAz">--</div></div>
+    <div class="stat"><div class="k">Tilt</div><div class="v" id="stEl">--</div></div>
+    <div class="stat"><div class="k">Coverage</div><div class="v" id="stCov">0%</div></div>
+  </div>
+
+  <div class="row">
+    <div class="seg" id="segMode"><button data-v="auto" class="on">Auto</button><button data-v="manual">Manual</button></div>
+    <button id="btnRec" class="btn teal grow">Pause</button>
+    <button id="btnMark" class="btn primary grow" hidden>Mark top of obstruction</button>
+    <button id="btnUndo" class="btn ghost" hidden>Undo</button>
+  </div>
+  <p class="fine" id="modeHelp" style="margin-top:8px">Auto: keep the skyline near the middle of the frame and turn slowly. The blue line shows what the app detects as the sky edge.</p>
+
+  <div class="card">
+    <h2>Horizon mask <span id="demoTag" class="demo" hidden>· DEMO DATA</span></h2>
+    <canvas id="chLin" class="chart" data-h="190"></canvas>
+    <div style="height:10px"></div>
+    <canvas id="chPol" class="chart" data-h="330"></canvas>
+    <div class="legend">
+      <span><i style="background:rgba(99,102,241,.55)"></i>Blocked (below mask)</span>
+      <span><i style="background:var(--acc)"></i>Measured edge</span>
+      <span><i style="background:var(--warn)"></i>Manual point</span>
+      <span><i style="background:var(--teal)"></i>Coverage / heading</span>
+    </div>
+    <p class="fine" id="gapTxt" style="margin-top:8px"></p>
+  </div>
+
+  <div class="card">
+    <h2>Calibration &amp; detection</h2>
+    <label class="f">Compass offset <small>shifts every azimuth</small> <span class="val" id="vOff">0.0°</span></label>
+    <input type="range" id="rOff" min="-45" max="45" step="0.5" value="0">
+    <div class="note">Phone compasses can be off by several degrees, worse near steel. Sun and star calibration (aim at the Sun or a known star and the app computes the offset) is planned. For now, sight a landmark with a known bearing and slide until the readout matches.</div>
+    <label class="f">Camera vertical field of view <small>assumed; portrait main camera is roughly 60–70°</small> <span class="val" id="vFov">65°</span></label>
+    <input type="range" id="rFov" min="40" max="90" step="1" value="65">
+    <label class="f">Detection sensitivity <small>higher = more is treated as blocked</small> <span class="val" id="vSens">0</span></label>
+    <input type="range" id="rSens" min="-15" max="15" step="1" value="0">
+    <label class="f">Safety margin added to export <span class="val" id="vMar">0.0°</span></label>
+    <input type="range" id="rMar" min="0" max="5" step="0.5" value="0">
+    <div class="row" style="margin-top:12px">
+      <div class="grow"><label class="f" style="margin-top:0">Bin size</label>
+        <select id="selBin"><option value="1">1°</option><option value="2" selected>2°</option><option value="5">5°</option></select></div>
+      <div class="grow"><label class="f" style="margin-top:0">Gaps on export</label>
+        <select id="selGap"><option value="interp" selected>Interpolate</option><option value="omit">Leave out</option></select></div>
+    </div>
+    <label class="f"><input type="checkbox" id="ckOv" checked> Show detected edge on camera view</label>
+  </div>
+
+  <div class="card">
+    <h2>Export</h2>
+    <div class="row">
+      <button class="btn primary grow" id="exHrz">NINA .hrz</button>
+      <button class="btn grow" id="exJson">JSON</button>
+      <button class="btn grow" id="exCsv">CSV</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn grow" id="exCopy">Copy .hrz text</button>
+      <button class="btn grow" id="exShare">Share…</button>
+      <button class="btn warn" id="btnReset">Reset scan</button>
+    </div>
+    <div class="note">In NINA: Options → General → Astrometry → Custom Horizon, then choose the saved .hrz file. The file is plain text with one “azimuth altitude” pair per line.</div>
+    <details><summary>Preview .hrz</summary><textarea id="prev" readonly></textarea></details>
+    <p class="fine" id="exMsg" style="margin-top:8px"></p>
+  </div>
+</section>
+
+<div class="card fine">
+  <b>Prototype limits.</b> Heading comes from the phone compass (iPhone: webkitCompassHeading; Android: absolute orientation) and can be several degrees off. Altitude comes from tilt plus an assumed camera field of view. Bright walls can look like sky; dark clouds can look like obstructions; branches thinner than about a degree are ignored. Always sanity-check the result against a landmark.
+</div>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ===================== CORE MATH (pure, no DOM) ===================== */
+//CORE-BEGIN
+var D2R=Math.PI/180, R2D=180/Math.PI;
+function norm360(a){a=a%360;return a<0?a+360:a;}
+function angDiff(a,b){var d=norm360(a-b);return d>180?d-360:d;}
+// W3C device orientation: Rz(alpha) Rx(beta) Ry(gamma). Returns row-major 3x3 [r00..r22].
+function rotMatrix(aDeg,bDeg,gDeg){
+  var a=aDeg*D2R,b=bDeg*D2R,g=gDeg*D2R;
+  var cA=Math.cos(a),sA=Math.sin(a),cB=Math.cos(b),sB=Math.sin(b),cG=Math.cos(g),sG=Math.sin(g);
+  return [
+    cA*cG-sA*sB*sG, -cB*sA, cG*sA*sB+cA*sG,
+    cG*sA+cA*sB*sG,  cA*cB, sA*sG-cA*cG*sB,
+    -cB*sG,          sB,    cB*cG
+  ];
+}
+function mulVec(R,v){return [R[0]*v[0]+R[1]*v[1]+R[2]*v[2],R[3]*v[0]+R[4]*v[1]+R[5]*v[2],R[6]*v[0]+R[7]*v[1]+R[8]*v[2]];}
+// world frame: x=East, y=North, z=Up. azimuth clockwise from north.
+function vecToAzAlt(w){
+  var n=Math.sqrt(w[0]*w[0]+w[1]*w[1]+w[2]*w[2])||1;
+  return {az:norm360(Math.atan2(w[0],w[1])*R2D),alt:Math.asin(Math.max(-1,Math.min(1,w[2]/n)))*R2D};
+}
+// ray through image pixel (px,py) on a W x H frame; device coords: x right, y up, camera looks along -z.
+function pixelRay(R,px,py,W,H,vfovDeg){
+  var f=(H/2)/Math.tan(vfovDeg*D2R/2);
+  var d=[(px-W/2)/f,-(py-H/2)/f,-1];
+  return vecToAzAlt(mulVec(R,d));
+}
+function medianOf(arr){
+  if(!arr.length)return null;
+  var s=arr.slice().sort(function(a,b){return a-b;}),m=s.length>>1;
+  return s.length%2?s[m]:(s[m-1]+s[m])/2;
+}
+// sky-ness score: brightness + blue dominance
+function analyzeFrame(data,W,H,sens){
+  var N=W*H,S=new Float32Array(N),i,x,y;
+  for(i=0;i<N;i++){
+    var r=data[4*i],g=data[4*i+1],b=data[4*i+2];
+    var L=(0.299*r+0.587*g+0.114*b)/255;
+    var bl=(b-(r+g)/2)/255*3; bl=bl<0?0:bl>1?1:bl;
+    S[i]=0.65*L+0.35*bl;
+  }
+  var T=new Float32Array(N);
+  for(y=0;y<H;y++){
+    var y0=y>0?y-1:0,y1=y<H-1?y+1:H-1;
+    for(x=0;x<W;x++){
+      var x0=x>0?x-1:0,x1=x<W-1?x+1:W-1,sum=0,c=0;
+      for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++){sum+=S[yy*W+xx];c++;}
+      T[y*W+x]=sum/c;
+    }
+  }
+  // Otsu split, only trusted when the frame is clearly two-class
+  var NB=64,hist=new Float32Array(NB),tot=0;
+  for(i=0;i<N;i++){var k=Math.min(NB-1,Math.floor(T[i]*NB));hist[k]++;tot++;}
+  var sumAll=0;for(i=0;i<NB;i++)sumAll+=i*hist[i];
+  var wB=0,sumB=0,best=-1,bestT=-1,muLo=0,muHi=0,wLo=0,wHi=0;
+  for(i=0;i<NB-1;i++){
+    wB+=hist[i];if(!wB)continue;var wF=tot-wB;if(!wF)break;
+    sumB+=i*hist[i];var mB=sumB/wB,mF=(sumAll-sumB)/wF;
+    var v=wB*wF*(mB-mF)*(mB-mF);
+    if(v>best){best=v;bestT=i;muLo=mB/NB;muHi=mF/NB;wLo=wB/tot;wHi=wF/tot;}
+  }
+  var thr=0.4,otsuOK=false;
+  if(bestT>=0&&wLo>0.05&&wHi>0.05&&muHi-muLo>0.2){thr=(bestT+1)/NB;otsuOK=true;}
+  thr+=sens;
+  var K=3,cols=new Int16Array(W),kinds=new Uint8Array(W);
+  for(x=0;x<W;x++){
+    if(T[x]<thr&&T[W+x]<thr&&T[2*W+x]<thr){kinds[x]=3;cols[x]=0;continue;}
+    var run=0,found=-1;
+    for(y=0;y<H;y++){
+      if(T[y*W+x]<thr){run++;if(run>=K){found=y-K+1;break;}}else run=0;
+    }
+    if(found<0){kinds[x]=2;cols[x]=H-1;}
+    else if(found<2){kinds[x]=3;cols[x]=0;}
+    else{
+      var bst=found,bd=0;
+      for(var q=Math.max(1,found-4);q<=Math.min(H-1,found+2);q++){
+        var d=T[(q-1)*W+x]-T[q*W+x];if(d>bd){bd=d;bst=q;}
+      }
+      kinds[x]=1;cols[x]=bst;
+    }
+  }
+  return {cols:cols,kinds:kinds,thr:thr,otsuOK:otsuOK};
+}
+//CORE-END
+
+/* ===================== STATE ===================== */
+var LS_KEY='meba-planner-scan-v1';
+var bins=[];function newBins(){bins=[];for(var i=0;i<360;i++)bins.push({ok:[],weak:[],manual:null});}
+newBins();
+var state={mode:'auto',rec:true,offset:0,vfov:65,sens:0,margin:0,step:2,gap:'interp',overlay:true,demo:false,dirty:false,started:false};
+var manualStack=[];
+var ori={alpha:null,beta:null,gamma:null,mode:'none',compass:null,compAcc:null,autoOff:0,offInit:false,ox:0,oy:0,t:0};
+var lastPose=null,lastFrameAz=null,lastFrameT=0,lastProc=0,hintMsg='',hintBad=false;
+var stream=null,video=null,aCanvas=null,aCtx=null,AW=144,AH=256;
+var lastDet=null,sensorDenied=false;
+
+var $=function(id){return document.getElementById(id);};
+
+/* ===================== ORIENTATION ===================== */
+function poseFromOri(){
+  if(ori.alpha==null||ori.beta==null||ori.gamma==null)return null;
+  var R=rotMatrix(ori.alpha,ori.beta,ori.gamma);
+  var f=[-R[2],-R[5],-R[8]],aa=vecToAzAlt(f);
+  return {R:R,azRaw:aa.az,el:aa.alt,azStore:norm360(aa.az+ori.autoOff)};
+}
+function onOri(e,isAbs){
+  if(e.alpha==null||e.beta==null||e.gamma==null)return;
+  var ios=(typeof e.webkitCompassHeading==='number');
+  if(isAbs){ori.mode='absolute';}
+  else if(ios){ori.mode='ios';}
+  else if(ori.mode==='absolute'){return;}
+  else if(e.absolute===true){ori.mode='absolute';}
+  else {ori.mode='relative';}
+  ori.alpha=e.alpha;ori.beta=e.beta;ori.gamma=e.gamma;ori.t=performance.now();
+  if(ori.mode==='ios'){
+    var acc=e.webkitCompassAccuracy;ori.compAcc=acc;ori.compass=e.webkitCompassHeading;
+    var p=poseFromOri();
+    // only trust compass when the phone is roughly upright (camera near horizon)
+    if(p&&Math.abs(p.el)<35&&(acc==null||acc>=0)){
+      var o=norm360(e.webkitCompassHeading-p.azRaw)*D2R;
+      if(!ori.offInit){ori.ox=Math.cos(o);ori.oy=Math.sin(o);ori.offInit=true;}
+      else{ori.ox+=0.02*(Math.cos(o)-ori.ox);ori.oy+=0.02*(Math.sin(o)-ori.oy);}
+      ori.autoOff=norm360(Math.atan2(ori.oy,ori.ox)*R2D);
+    }
+  }else{ori.autoOff=0;}
+}
+function startOrientation(){
+  window.addEventListener('deviceorientationabsolute',function(e){onOri(e,true);},true);
+  window.addEventListener('deviceorientation',function(e){onOri(e,false);},true);
+}
+
+/* ===================== DATA ===================== */
+function pushOk(i,alt){var b=bins[i].ok;b.push(alt);if(b.length>15)b.shift();state.dirty=true;}
+function pushWeak(i,alt){var b=bins[i].weak;b.push(alt);if(b.length>9)b.shift();state.dirty=true;}
+function binValue(i){
+  var b=bins[i];
+  if(b.manual!=null)return {alt:b.manual,src:'manual'};
+  if(b.ok.length)return {alt:medianOf(b.ok),src:'auto'};
+  if(b.weak.length)return {alt:medianOf(b.weak),src:'weak'};
+  return null;
+}
+function mod(n,m){return ((n%m)+m)%m;}
+// Build mask at the chosen step. Returns [{az,alt|null,src}] covering 0..359
+function computeMask(step,fillGaps){
+  var n=360,delta=state.offset,out=[],k;
+  var cnt=Math.ceil(n/step);
+  for(k=0;k<cnt;k++){
+    var best=null,bestRank=-1;
+    for(var a=k*step;a<Math.min(n,(k+1)*step);a++){
+      var v=binValue(mod(Math.round(a-delta),360));
+      if(!v)continue;
+      var rank=v.src==='weak'?1:2;
+      if(rank>bestRank||(rank===bestRank&&v.alt>best.alt)){best=v;bestRank=rank;}
+    }
+    out.push({az:k*step,alt:best?best.alt:null,src:best?best.src:'none'});
+  }
+  var idx=[];for(k=0;k<cnt;k++)if(out[k].alt!=null)idx.push(k);
+  if(fillGaps&&idx.length>=2){
+    for(k=0;k<cnt;k++){
+      if(out[k].alt!=null)continue;
+      var pi=-1,ni=-1,j;
+      for(j=1;j<=cnt;j++){if(out[mod(k-j,cnt)].alt!=null&&out[mod(k-j,cnt)].src!=='interp'){pi=mod(k-j,cnt);break;}}
+      for(j=1;j<=cnt;j++){if(out[mod(k+j,cnt)].alt!=null&&out[mod(k+j,cnt)].src!=='interp'){ni=mod(k+j,cnt);break;}}
+      if(pi<0||ni<0)continue;
+      var dP=mod(k-pi,cnt),dN=mod(ni-k,cnt),t=dP/(dP+dN);
+      out[k]={az:k*step,alt:out[pi].alt+(out[ni].alt-out[pi].alt)*t,src:'interp'};
+    }
+  }
+  return out;
+}
+function coverage(){
+  var ok=0,weak=0;
+  for(var i=0;i<360;i++){var v=binValue(i);if(!v)continue;if(v.src==='weak')weak++;else ok++;}
+  return {ok:ok,weak:weak,pct:Math.round(ok/3.6)};
+}
+function gapRanges(){
+  // raw 1° coverage, shifted by offset, returns list of [start,end] az ranges with no measured data (>=6°)
+  var has=[];for(var a=0;a<360;a++){var v=binValue(mod(Math.round(a-state.offset),360));has.push(!!v&&v.src!=='weak');}
+  if(has.every(Boolean))return [];
+  if(!has.some(Boolean))return [[0,359]];
+  var start=has.indexOf(true),res=[],i=0,cur=null;
+  for(i=1;i<=360;i++){
+    var a2=(start+i)%360,h=has[a2];
+    if(!h&&cur===null)cur=a2;
+    if(h&&cur!==null){var len=mod(a2-cur,360);if(len>=6)res.push([cur,mod(a2-1,360)]);cur=null;}
+  }
+  return res;
+}
+
+/* ===================== CAMERA / FRAME LOOP ===================== */
+function setHint(msg,bad){hintMsg=msg;hintBad=!!bad;var h=$('hintTxt');if(h){h.textContent=msg;h.className=bad?'bad':'';}}
+function processFrame(now){
+  if(!state.started||state.demo)return;
+  var pose=poseFromOri();lastPose=pose;
+  if(!pose){setHint(sensorDenied?'Motion sensors blocked: allow Motion sensors for this site in browser settings, then reload.':'Waiting for motion sensors… move the phone a little.',true);return;}
+  if(!video||video.readyState<2)return;
+  if(now-lastProc<66)return; lastProc=now;
+  // angular speed gate
+  var dt=(now-lastFrameT)/1000,fast=false;
+  if(lastFrameAz!=null&&dt>0){var spd=Math.abs(angDiff(pose.azStore,lastFrameAz))/dt;fast=spd>70;}
+  lastFrameAz=pose.azStore;lastFrameT=now;
+  var vw=video.videoWidth,vh=video.videoHeight;
+  if(!vw||!vh)return;
+  if(Math.abs(AW*vh/vw-AH)>1){AH=Math.round(AW*vh/vw);aCanvas.width=AW;aCanvas.height=AH;}
+  aCtx.drawImage(video,0,0,AW,AH);
+  var img=aCtx.getImageData(0,0,AW,AH);
+  var det=analyzeFrame(img.data,AW,AH,state.sens/100);
+  lastDet=det;
+  if(state.mode!=='auto'||!state.rec){setHint(state.mode==='manual'?'Manual: aim the crosshair at the top of the obstruction, then tap Mark.':'Paused',false);return;}
+  if(fast){setHint('Slow down: turning too fast',true);return;}
+  if(pose.el>65||pose.el<-30){setHint('Aim at the skyline: tilt the phone toward the horizon',true);return;}
+  if(vw>vh&&window.innerHeight>window.innerWidth){setHint('Camera frames are landscape; this prototype expects portrait video',true);}
+  var perBin={};
+  var okCount=0,skyAll=0,obsTop=0;
+  for(var x=0;x<AW;x++){
+    var kind=det.kinds[x];
+    var r=pixelRay(pose.R,x+0.5,det.cols[x]+0.5,AW,AH,state.vfov);
+    var az=norm360(r.az+ori.autoOff),bi=Math.round(az)%360;
+    var e=perBin[bi]||(perBin[bi]={ok:[],sky:[],obs:[]});
+    if(kind===1){e.ok.push(r.alt);okCount++;}else if(kind===2){e.sky.push(r.alt);skyAll++;}else if(kind===3){e.obs.push(r.alt);obsTop++;}
+  }
+  for(var k in perBin){
+    var e2=perBin[k],i=+k;
+    if(e2.ok.length)pushOk(i,medianOf(e2.ok));
+    else if(e2.sky.length)pushWeak(i,medianOf(e2.sky));
+    else if(e2.obs.length)pushWeak(i,medianOf(e2.obs));
+  }
+  if(okCount===0&&skyAll>obsTop)setHint('All sky in view: tilt down until the skyline is in frame',true);
+  else if(okCount===0)setHint('Obstruction fills the view: tilt up to find its top edge',true);
+  else setHint('Scanning… keep turning slowly',false);
+}
+function drawOverlay(){
+  var c=$('ov');if(!c)return;
+  var w=c.clientWidth,h=c.clientHeight;
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+  var g=c.getContext('2d');g.clearRect(0,0,w,h);
+  if(state.overlay&&lastDet&&state.mode==='auto'){
+    g.lineWidth=2;
+    var px=null,py=null;
+    for(var x=0;x<AW;x++){
+      var k=lastDet.kinds[x],X=(x+0.5)/AW*w,Y=lastDet.cols[x]/AH*h;
+      if(k===1){
+        g.strokeStyle='#4f8ef7';
+        if(px!=null){g.beginPath();g.moveTo(px,py);g.lineTo(X,Y);g.stroke();}
+        px=X;py=Y;
+      }else{px=null;py=null;}
+    }
+  }
+  // crosshair
+  g.strokeStyle='rgba(45,212,191,.9)';g.lineWidth=1.5;
+  var cx=w/2,cy=h/2;
+  g.beginPath();g.moveTo(cx-18,cy);g.lineTo(cx-5,cy);g.moveTo(cx+5,cy);g.lineTo(cx+18,cy);g.moveTo(cx,cy-18);g.lineTo(cx,cy-5);g.moveTo(cx,cy+5);g.lineTo(cx,cy+18);g.stroke();
+  g.beginPath();g.arc(cx,cy,3,0,Math.PI*2);g.stroke();
+}
+
+/* ===================== CHARTS ===================== */
+var DPR=Math.min(2,window.devicePixelRatio||1);
+function fitCanvas(c){
+  var w=Math.round(c.clientWidth*DPR),hh=Math.round((+c.dataset.h)*DPR);
+  if(c.width!==w||c.height!==hh){c.width=w;c.height=hh;}
+  c.style.height=(hh/DPR)+'px';
+  return c.getContext('2d');
+}
+function currentAz(){var p=lastPose;return p?norm360(p.azStore+state.offset):null;}
+function drawLinear(){
+  var c=$('chLin');if(!c||!c.clientWidth)return;
+  var g=fitCanvas(c),W=c.width,H=c.height,s=DPR;
+  g.clearRect(0,0,W,H);
+  var L=34*s,Rr=8*s,Tp=8*s,B=30*s,pw=W-L-Rr,ph=H-Tp-B;
+  var mask=computeMask(state.step,true),mx=30;
+  mask.forEach(function(m){if(m.alt!=null&&m.alt+8>mx)mx=m.alt+8;});
+  mx=Math.min(90,Math.ceil(mx/10)*10);
+  function X(az){return L+az/360*pw;} function Y(alt){return Tp+ph-(alt/mx)*ph;}
+  g.fillStyle='#0e1118';g.fillRect(0,0,W,H);
+  g.font=(10*s)+'px "Geist Mono",monospace';g.textBaseline='middle';
+  g.strokeStyle='#232836';g.lineWidth=1;g.fillStyle='#9aa3b5';
+  for(var a=0;a<=mx;a+=(mx>45?15:10)){g.beginPath();g.moveTo(L,Y(a));g.lineTo(L+pw,Y(a));g.stroke();g.textAlign='right';g.fillText(a+'°',L-5*s,Y(a));}
+  var card=['N','NE','E','SE','S','SW','W','NW','N'];
+  g.textAlign='center';
+  for(var i=0;i<=8;i++){var xx=X(i*45);g.beginPath();g.moveTo(xx,Tp);g.lineTo(xx,Tp+ph);g.stroke();g.fillText(card[i],xx,H-B+10*s);}
+  // blocked fill
+  var pts=mask.filter(function(m){return m.alt!=null;});
+  if(pts.length){
+    g.beginPath();g.moveTo(X(0),Y(0));
+    mask.forEach(function(m){g.lineTo(X(m.az+state.step/2),Y(m.alt!=null?m.alt:0));});
+    g.lineTo(X(360),Y(0));g.closePath();g.fillStyle='rgba(99,102,241,.45)';g.fill();
+    // edge segments
+    g.lineWidth=2*s;
+    for(var j=0;j<mask.length-1;j++){
+      var m1=mask[j],m2=mask[j+1];if(m1.alt==null||m2.alt==null)continue;
+      var meas=(m1.src==='auto'||m1.src==='manual')&&(m2.src==='auto'||m2.src==='manual');
+      g.setLineDash(meas?[]:[4*s,4*s]);g.strokeStyle=meas?'#4f8ef7':'rgba(79,142,247,.5)';
+      g.beginPath();g.moveTo(X(m1.az+state.step/2),Y(m1.alt));g.lineTo(X(m2.az+state.step/2),Y(m2.alt));g.stroke();
+    }
+    g.setLineDash([]);
+  }
+  // manual points
+  g.fillStyle='#ff8b1a';
+  mask.forEach(function(m){if(m.src==='manual'){g.beginPath();g.arc(X(m.az+state.step/2),Y(m.alt),3.5*s,0,7);g.fill();}});
+  // coverage strip
+  for(var q=0;q<360;q++){
+    var v=binValue(mod(Math.round(q-state.offset),360));
+    g.fillStyle=v?(v.src==='weak'?'rgba(45,212,191,.35)':'#2dd4bf'):'#232836';
+    g.fillRect(X(q),Tp+ph+1*s,Math.max(1,pw/360),3*s);
+  }
+  // heading
+  var ca=currentAz();
+  if(ca!=null){g.strokeStyle='#2dd4bf';g.lineWidth=1.5*s;g.setLineDash([]);g.beginPath();g.moveTo(X(ca),Tp);g.lineTo(X(ca),Tp+ph);g.stroke();}
+}
+function drawPolar(){
+  var c=$('chPol');if(!c||!c.clientWidth)return;
+  var cw=c.clientWidth;c.dataset.h=Math.min(cw,380);
+  var g=fitCanvas(c),W=c.width,H=c.height,s=DPR;
+  g.clearRect(0,0,W,H);g.fillStyle='#0e1118';g.fillRect(0,0,W,H);
+  var cx=W/2,cy=H/2,R=Math.min(W,H)/2-22*s;
+  function P(az,alt){var r=(90-alt)/90*R,a=az*D2R;return [cx+r*Math.sin(a),cy-r*Math.cos(a)];}
+  g.strokeStyle='#232836';g.lineWidth=1;
+  [0,30,60].forEach(function(al){g.beginPath();g.arc(cx,cy,(90-al)/90*R,0,7);g.stroke();});
+  for(var a=0;a<360;a+=45){var p=P(a,0);g.beginPath();g.moveTo(cx,cy);g.lineTo(p[0],p[1]);g.stroke();}
+  g.fillStyle='#9aa3b5';g.font=(11*s)+'px "Geist Mono",monospace';g.textAlign='center';g.textBaseline='middle';
+  [['N',0],['E',90],['S',180],['W',270]].forEach(function(t){var p=P(t[1],-9);g.fillText(t[0],p[0],p[1]);});
+  g.fillText('30°',cx+(60/90*R)*0.0,cy-(60/90*R)+8*s);g.fillText('60°',cx,cy-(30/90*R)+8*s);
+  var mask=computeMask(state.step,true),has=mask.some(function(m){return m.alt!=null;});
+  if(has){
+    g.beginPath();g.arc(cx,cy,R,0,Math.PI*2);
+    var first=true;
+    for(var i=0;i<=mask.length;i++){
+      var m=mask[i%mask.length],al=m.alt!=null?m.alt:0,p2=P(m.az+state.step/2,al);
+      if(first){g.moveTo(p2[0],p2[1]);first=false;}else g.lineTo(p2[0],p2[1]);
+    }
+    g.closePath();g.fillStyle='rgba(99,102,241,.5)';g.fill('evenodd');
+    g.strokeStyle='#4f8ef7';g.lineWidth=2*s;g.beginPath();first=true;
+    for(var k=0;k<=mask.length;k++){var mm=mask[k%mask.length],al2=mm.alt!=null?mm.alt:0,p3=P(mm.az+state.step/2,al2);if(first){g.moveTo(p3[0],p3[1]);first=false;}else g.lineTo(p3[0],p3[1]);}
+    g.stroke();
+    g.fillStyle='#ff8b1a';
+    mask.forEach(function(m){if(m.src==='manual'){var p4=P(m.az+state.step/2,m.alt);g.beginPath();g.arc(p4[0],p4[1],3.5*s,0,7);g.fill();}});
+  }
+  // coverage ring
+  g.lineWidth=4*s;
+  for(var q=0;q<360;q+=1){
+    var v=binValue(mod(Math.round(q-state.offset),360));
+    g.strokeStyle=v?(v.src==='weak'?'rgba(45,212,191,.35)':'#2dd4bf'):'#232836';
+    var a1=(q-90-0.5)*D2R,a2=(q-90+0.5)*D2R;
+    g.beginPath();g.arc(cx,cy,R+8*s,a1,a2+0.01);g.stroke();
+  }
+  var ca=currentAz();
+  if(ca!=null){var pe=P(ca,0);g.strokeStyle='#2dd4bf';g.lineWidth=1.5*s;g.beginPath();g.moveTo(cx,cy);g.lineTo(pe[0],pe[1]);g.stroke();
+    g.fillStyle='#2dd4bf';g.beginPath();g.arc(pe[0],pe[1],4*s,0,7);g.fill();}
+  g.fillStyle='#9aa3b5';g.font=(10*s)+'px "Geist",sans-serif';g.textAlign='left';g.textBaseline='bottom';
+  g.fillText('View from above · zenith at centre',8*s,H-6*s);
+}
+function updateStats(){
+  var p=lastPose,ca=currentAz();
+  $('stAz').textContent=ca==null?'--':ca.toFixed(0)+'°';
+  $('stEl').textContent=p?p.el.toFixed(1)+'°':'--';
+  var cv=coverage();$('stCov').textContent=cv.pct+'%';
+  $('hudAz').textContent=ca==null?'AZ --':'AZ '+ca.toFixed(1)+'°  ALT '+(p?p.el.toFixed(1):'--')+'°';
+  var src=ori.mode==='ios'?'iOS compass':ori.mode==='absolute'?'absolute compass':ori.mode==='relative'?'RELATIVE only':'no heading';
+  if(state.demo)src='demo';
+  $('hudSrc').textContent='heading: '+src;
+  var gaps=gapRanges(),t='';
+  if(cv.pct===0)t='No data yet.';
+  else if(!gaps.length)t='Full 360° covered.';
+  else t='Gaps (≥6°): '+gaps.slice(0,6).map(function(r){return Math.round(r[0])+'°–'+Math.round(r[1])+'°';}).join(', ')+(gaps.length>6?' …':'')+'. Turn toward these, or use Manual mode.';
+  if(cv.weak)t+=' '+cv.weak+' directions are low-confidence (no clear skyline in view).';
+  $('gapTxt').textContent=t;
+  if(ori.mode==='relative'&&!state.demo)$('introMsg').textContent='';
+}
+
+/* ===================== EXPORT ===================== */
+function fmtAz(a){return (Math.round(a*10)/10).toString();}
+function buildExport(){
+  var mask=computeMask(state.step,state.gap==='interp');
+  var pts=mask.filter(function(m){return m.alt!=null;}).map(function(m){
+    return {az:m.az+(state.step>1?(state.step-1)/2:0),alt:Math.max(0,Math.min(90,m.alt+state.margin)),src:m.src};
+  });
+  return pts;
+}
+function hrzText(pts){
+  var cv=coverage();
+  var head=['# MEBA Planner horizon scan'+(state.demo?' (DEMO DATA)':''),
+    '# Created '+new Date().toISOString()+' | bin '+state.step+'° | compass offset '+state.offset.toFixed(1)+'° | vFOV '+state.vfov+'° | margin '+state.margin.toFixed(1)+'° | coverage '+cv.pct+'%',
+    '# Az Alt'];
+  var lines=pts.map(function(p){return fmtAz(p.az)+' '+p.alt.toFixed(1);});
+  if(pts.length&&pts[0].az>0.01){lines.unshift('0 '+pts[0].alt.toFixed(1));}
+  if(pts.length){var last=pts[pts.length-1];lines.push('360 '+((lines[0].split(' ')[1])||last.alt.toFixed(1)));}
+  return head.concat(lines).join('\n')+'\n';
+}
+function jsonText(pts){
+  var cv=coverage();
+  return JSON.stringify({app:'MEBA Planner Horizon Scan',version:'0.1',demo:state.demo,created:new Date().toISOString(),
+    binDegrees:state.step,compassOffsetDegrees:state.offset,headingSource:ori.mode,verticalFovDegrees:state.vfov,
+    safetyMarginDegrees:state.margin,coveragePercent:cv.pct,lowConfidenceDirections:cv.weak,
+    points:pts.map(function(p){return {azimuth:+p.az.toFixed(1),altitude:+p.alt.toFixed(2),source:p.src};})},null,2);
+}
+function csvText(pts){return 'azimuth_deg,altitude_deg,source\n'+pts.map(function(p){return p.az.toFixed(1)+','+p.alt.toFixed(2)+','+p.src;}).join('\n')+'\n';}
+function download(name,text,mime){
+  var b=new Blob([text],{type:mime}),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(u);a.remove();},1500);
+}
+function exMsg(t){$('exMsg').textContent=t;}
+function doExport(kind){
+  var pts=buildExport();
+  if(pts.length<2){exMsg('Not enough data yet: need at least 2 points. Scan more of the horizon.');return;}
+  var stamp=new Date().toISOString().slice(0,10);
+  if(kind==='hrz'){download('meba-horizon-'+stamp+'.hrz',hrzText(pts),'text/plain');exMsg('Saved .hrz with '+pts.length+' points.');}
+  else if(kind==='json'){download('meba-horizon-'+stamp+'.json',jsonText(pts),'application/json');exMsg('Saved JSON.');}
+  else if(kind==='csv'){download('meba-horizon-'+stamp+'.csv',csvText(pts),'text/csv');exMsg('Saved CSV.');}
+}
+function updatePreview(){var pts=buildExport();$('prev').value=pts.length>=2?hrzText(pts):'(need at least 2 points)';}
+
+/* ===================== PERSISTENCE ===================== */
+function save(){
+  if(!state.dirty||state.demo)return;
+  try{localStorage.setItem(LS_KEY,JSON.stringify({bins:bins,offset:state.offset,vfov:state.vfov,sens:state.sens,margin:state.margin,step:state.step}));state.dirty=false;}catch(e){}
+}
+function load(){
+  try{
+    var s=JSON.parse(localStorage.getItem(LS_KEY)||'null');
+    if(s&&s.bins&&s.bins.length===360){bins=s.bins;state.offset=s.offset||0;state.vfov=s.vfov||65;state.sens=s.sens||0;state.margin=s.margin||0;state.step=s.step||2;return true;}
+  }catch(e){}
+  return false;
+}
+
+/* ===================== DEMO ===================== */
+function demoProfile(az){
+  var h=function(c,w,a){var d=Math.abs(angDiff(az,c));return d<w?a*(1-d/w):0;};
+  return 4+h(45,22,26)+h(95,10,12)+(az>150&&az<205?28:0)+h(250,18,16)+h(320,14,20)+Math.sin(az*D2R*3)*1.2;
+}
+var demoTimer=null,demoAz=0;
+function startDemo(){
+  state.demo=true;state.started=true;
+  $('intro').hidden=true;$('live').hidden=false;$('demoTag').hidden=false;
+  $('camwrap').style.setProperty('--ar','0.5625');
+  setHint('DEMO: simulated sweep with synthetic horizon data',false);
+  newBins();demoAz=0;ori.mode='demo';
+  demoTimer=setInterval(function(){
+    demoAz=(demoAz+2.2)%360;
+    ori.alpha=0;ori.beta=90;ori.gamma=0;
+    lastPose={R:null,azRaw:demoAz,el:demoProfile(demoAz)-3,azStore:demoAz};
+    for(var k=-3;k<=3;k++){var a=mod(Math.round(demoAz)+k,360);for(var r=0;r<3;r++)pushOk(a,demoProfile(a)+(Math.random()-0.5)*1.5);}
+    if(demoAz<3){setHint('DEMO complete: try Manual mode, offset slider and export',false);}
+  },80);
+  startLoops();
+}
+
+/* ===================== START / UI ===================== */
+function requestSensors(){
+  // must be called synchronously inside the tap handler
+  var ps=[];
+  try{if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function')ps.push(DeviceOrientationEvent.requestPermission());}catch(e){ps.push(Promise.reject(e));}
+  try{if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function')ps.push(DeviceMotionEvent.requestPermission());}catch(e){}
+  return ps;
+}
+function openCamera(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return Promise.reject(new Error('Camera API unavailable (needs HTTPS and a modern browser)'));
+  return navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:720},height:{ideal:1280}}});
+}
+function onStart(){
+  var msg=$('introMsg');msg.textContent='Requesting access…';
+  if(!window.isSecureContext){msg.textContent='This page must be opened over HTTPS for sensors and camera.';return;}
+  var sensorPs=requestSensors();
+  var camP=openCamera();   // started inside the gesture
+  Promise.all(sensorPs.map(function(p){return p.catch(function(e){return 'denied';});})).then(function(res){
+    var denied=res.some(function(r){return r==='denied';});
+    if(denied&&/iPhone|iPad|iPod/.test(navigator.userAgent)){msg.textContent='Motion/orientation access was denied. On iPhone: Settings → Safari → Motion & Orientation Access, then reload.';camP.then(function(s){s.getTracks().forEach(function(t){t.stop();});}).catch(function(){});return;}
+    if(denied)sensorDenied=true;
+    startOrientation();
+    return camP.then(function(s){
+      stream=s;state.started=true;
+      $('intro').hidden=true;$('live').hidden=false;
+      video=$('vid');video.srcObject=s;
+      video.onloadedmetadata=function(){
+        var ar=video.videoWidth/video.videoHeight;$('camwrap').style.setProperty('--ar',ar.toFixed(4));
+        video.play().catch(function(){});
+      };
+      aCanvas=document.createElement('canvas');aCanvas.width=AW;aCanvas.height=AH;aCtx=aCanvas.getContext('2d',{willReadFrequently:true});
+      setHint('Waiting for sensors…',true);
+      try{if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(function(){});}catch(e){}
+      try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('portrait').catch(function(){});}catch(e){}
+      if(load())syncControls();
+      startLoops();
+    },function(err){
+      msg.textContent='Camera unavailable: '+(err&&err.message?err.message:err)+'. Allow camera access and try again.';
+    });
+  });
+  // if sensors needed no permission (Android) the Promise.all above resolves immediately
+}
+var loopsOn=false;
+function startLoops(){
+  if(loopsOn)return;loopsOn=true;
+  function raf(t){processFrame(t);drawOverlay();requestAnimationFrame(raf);}
+  requestAnimationFrame(raf);
+  setInterval(function(){updateStats();drawLinear();drawPolar();},250);
+  setInterval(save,3000);
+  setInterval(function(){if(!$('live').hidden)updatePreview();},1500);
+}
+function syncControls(){
+  $('rOff').value=state.offset;$('vOff').textContent=state.offset.toFixed(1)+'°';
+  $('rFov').value=state.vfov;$('vFov').textContent=state.vfov+'°';
+  $('rSens').value=state.sens;$('vSens').textContent=state.sens;
+  $('rMar').value=state.margin;$('vMar').textContent=state.margin.toFixed(1)+'°';
+  $('selBin').value=String(state.step);$('selGap').value=state.gap;
+}
+function setMode(m){
+  state.mode=m;
+  Array.prototype.forEach.call($('segMode').children,function(b){b.classList.toggle('on',b.getAttribute('data-v')===m);});
+  $('btnMark').hidden=m!=='manual';$('btnUndo').hidden=m!=='manual';$('btnRec').hidden=m!=='auto';
+  $('modeHelp').textContent=m==='auto'
+    ?'Auto: keep the skyline near the middle of the frame and turn slowly. The blue line shows what the app detects as the sky edge.'
+    :'Manual: point the crosshair at the top of the nearest obstruction (tree line, roof) in each direction, then tap Mark. Marks override auto data in that direction; gaps are interpolated.';
+}
+function markPoint(){
+  var p=state.demo?lastPose:poseFromOri();
+  if(!p){setHint('No sensor data yet',true);return;}
+  var i=Math.round(p.azStore)%360;
+  manualStack.push({i:i,prev:bins[i].manual});
+  bins[i].manual=p.el;state.dirty=true;
+  setHint('Marked '+norm360(p.azStore+state.offset).toFixed(0)+'° at '+p.el.toFixed(1)+'° altitude',false);
+  if(navigator.vibrate)navigator.vibrate(20);
+}
+function undoMark(){var m=manualStack.pop();if(!m)return;bins[m.i].manual=m.prev;state.dirty=true;}
+function wire(){
+  $('btnStart').addEventListener('click',onStart);
+  $('btnDemo').addEventListener('click',startDemo);
+  $('segMode').addEventListener('click',function(e){var v=e.target.getAttribute&&e.target.getAttribute('data-v');if(v)setMode(v);});
+  $('btnRec').addEventListener('click',function(){state.rec=!state.rec;this.textContent=state.rec?'Pause':'Resume recording';});
+  $('btnMark').addEventListener('click',markPoint);
+  $('camwrap').addEventListener('click',function(){if(state.mode==='manual')markPoint();});
+  $('btnUndo').addEventListener('click',undoMark);
+  $('rOff').addEventListener('input',function(){state.offset=+this.value;$('vOff').textContent=state.offset.toFixed(1)+'°';state.dirty=true;});
+  $('rFov').addEventListener('input',function(){state.vfov=+this.value;$('vFov').textContent=state.vfov+'°';state.dirty=true;});
+  $('rSens').addEventListener('input',function(){state.sens=+this.value;$('vSens').textContent=state.sens;state.dirty=true;});
+  $('rMar').addEventListener('input',function(){state.margin=+this.value;$('vMar').textContent=state.margin.toFixed(1)+'°';state.dirty=true;});
+  $('selBin').addEventListener('change',function(){state.step=+this.value;state.dirty=true;});
+  $('selGap').addEventListener('change',function(){state.gap=this.value;});
+  $('ckOv').addEventListener('change',function(){state.overlay=this.checked;});
+  $('exHrz').addEventListener('click',function(){doExport('hrz');});
+  $('exJson').addEventListener('click',function(){doExport('json');});
+  $('exCsv').addEventListener('click',function(){doExport('csv');});
+  $('exCopy').addEventListener('click',function(){
+    var pts=buildExport();if(pts.length<2){exMsg('Not enough data yet.');return;}
+    var t=hrzText(pts);
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){exMsg('Copied .hrz text.');},function(){exMsg('Copy blocked: use the preview box below.');});
+    else exMsg('Clipboard unavailable: use the preview box below.');
+  });
+  $('exShare').addEventListener('click',function(){
+    var pts=buildExport();if(pts.length<2){exMsg('Not enough data yet.');return;}
+    var t=hrzText(pts),name='meba-horizon.hrz';
+    try{
+      var f=new File([t],name,{type:'text/plain'});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'MEBA Planner horizon'}).catch(function(){});return;}
+      if(navigator.share){navigator.share({title:'MEBA Planner horizon',text:t}).catch(function(){});return;}
+    }catch(e){}
+    exMsg('Sharing unavailable here: use the download buttons.');
+  });
+  $('btnReset').addEventListener('click',function(){
+    if(!confirm('Clear the whole scan?'))return;
+    newBins();manualStack=[];state.dirty=true;try{localStorage.removeItem(LS_KEY);}catch(e){}save();exMsg('Scan cleared.');
+  });
+  setMode('auto');
+  if(!window.isSecureContext)$('introMsg').textContent='Not secure (HTTPS): sensors and camera will not work on this address.';
+  window.addEventListener('beforeunload',function(){state.dirty=true;save();});
+}
+wire();
+// test hooks (harmless in production)
+window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,startDemo:startDemo,coverage:coverage};
+})();
+</script>
+</body>
+</html>
