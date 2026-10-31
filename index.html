@@ -46,6 +46,8 @@ p{margin:0 0 10px}
 .btn[disabled]{opacity:.45;pointer-events:none}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row>.grow{flex:1 1 140px}
+.pair{display:flex;gap:8px;flex:1 1 220px}
+.pair>.btn{flex:1}
 ol.steps{margin:0 0 14px;padding-left:20px;color:var(--mut)} ol.steps li{margin:3px 0} ol.steps b{color:var(--text);font-weight:600}
 .camwrap{position:relative;width:min(100%,calc(46vh * var(--ar,0.5625)));aspect-ratio:var(--ar,0.5625);margin:0 auto;
   background:#000;border:1px solid var(--line);border-radius:16px;overflow:hidden}
@@ -78,14 +80,30 @@ textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px 
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin:6px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .demo{color:var(--warn);font-weight:700}
+.stepind{max-width:640px;margin:0 auto;padding:0 14px 6px;display:flex;align-items:center;gap:6px;font-size:12px;font-family:var(--mono)}
+.stepind .s{color:var(--mut);border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 8px;white-space:nowrap}
+.stepind .s.on{color:#fff;background:var(--acc);border-color:var(--acc);font-weight:600}
+.stepind .s.done{color:var(--teal);border-color:rgba(45,212,191,.45)}
+.stepind .sep{color:var(--mut)}
+input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+.site-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+.site-row .btn{min-height:38px;padding:8px 12px}
+.site-row .acts{display:flex;gap:6px;flex-shrink:0}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="brand"><span class="m">MEBA</span><span class="p">Planner</span></div>
-  <div class="tag">Horizon scan · prototype v0.1</div>
+  <div class="tag">Horizon scan · prototype v0.2</div>
 </header>
+<nav class="stepind" id="stepInd" aria-label="Steps">
+  <span class="s on" data-step="1">1 Scan</span>
+  <span class="sep" aria-hidden="true">›</span>
+  <span class="s" data-step="2">2 Review</span>
+  <span class="sep" aria-hidden="true">›</span>
+  <span class="s" data-step="3">3 Export</span>
+</nav>
 <main>
 
 <section id="intro" class="card">
@@ -95,7 +113,7 @@ textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px 
     <li><b>Tap Start</b> and allow motion/orientation and camera access.</li>
     <li>Hold the phone <b>upright (portrait)</b> at the height of your scope, a few feet from steel and the mount.</li>
     <li>Turn <b>slowly</b> all the way around, keeping the skyline in the middle of the frame.</li>
-    <li>Check the chart for gaps, fix with <b>Manual mode</b>, then export.</li>
+    <li>Tap <b>Done</b> to review the chart and export. Use <b>Manual mode</b> first if a gap needs a fix.</li>
   </ol>
   <button id="btnStart" class="btn primary big">Start scan</button>
   <div style="height:8px"></div>
@@ -105,6 +123,11 @@ textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px 
 </section>
 
 <section id="live" hidden>
+  <div id="sensorHelp" class="card" hidden>
+    <h2>Motion sensors blocked</h2>
+    <div id="sensorHelpBody"></div>
+    <button type="button" class="btn warn big" id="btnSensorReload">Reload after allowing</button>
+  </div>
   <div class="camwrap" id="camwrap">
     <video id="vid" playsinline muted autoplay></video>
     <canvas id="ov"></canvas>
@@ -120,10 +143,14 @@ textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px 
 
   <div class="row">
     <div class="seg" id="segMode"><button data-v="auto" class="on">Auto</button><button data-v="manual">Manual</button></div>
-    <button id="btnRec" class="btn teal grow">Pause</button>
+    <div class="pair">
+      <button id="btnRec" class="btn teal grow">Pause</button>
+      <button id="btnDone" class="btn primary grow">Done</button>
+    </div>
     <button id="btnMark" class="btn primary grow" hidden>Mark top of obstruction</button>
     <button id="btnUndo" class="btn ghost" hidden>Undo</button>
   </div>
+  <p class="fine" id="doneHint" style="margin-top:8px">Tap Done to review and export.</p>
   <p class="fine" id="modeHelp" style="margin-top:8px">Auto: keep the skyline near the middle of the frame and turn slowly. The blue line shows what the app detects as the sky edge.</p>
 
   <div class="card">
@@ -175,6 +202,53 @@ textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px 
     <div class="note">In NINA: Options → General → Astrometry → Custom Horizon, then choose the saved .hrz file. The file is plain text with one “azimuth altitude” pair per line.</div>
     <details><summary>Preview .hrz</summary><textarea id="prev" readonly></textarea></details>
     <p class="fine" id="exMsg" style="margin-top:8px"></p>
+  </div>
+</section>
+
+<section id="results" hidden>
+  <div class="card">
+    <h2>Horizon <span id="demoTagR" class="demo" hidden>· DEMO DATA</span></h2>
+    <canvas id="chLinR" class="chart" data-h="280"></canvas>
+    <div style="height:10px"></div>
+    <canvas id="chPolR" class="chart" data-h="420"></canvas>
+    <div class="legend">
+      <span><i style="background:rgba(99,102,241,.55)"></i>Blocked (below mask)</span>
+      <span><i style="background:var(--acc)"></i>Measured edge</span>
+      <span><i style="background:var(--warn)"></i>Manual point</span>
+      <span><i style="background:var(--teal)"></i>Coverage / heading</span>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="k">Coverage</div><div class="v" id="rsCov">0%</div></div>
+    <div class="stat"><div class="k">Highest block</div><div class="v" id="rsHi">--</div><div class="fine" id="rsHiSub"></div></div>
+    <div class="stat"><div class="k">Clearest</div><div class="v" id="rsLo">--</div><div class="fine" id="rsLoSub"></div></div>
+  </div>
+  <div class="card">
+    <h2>Save this site</h2>
+    <label class="f" for="siteName">Site name</label>
+    <input id="siteName" type="text" placeholder="Backyard" maxlength="80" autocomplete="off" enterkeyhint="done">
+    <div class="row" style="margin-top:12px">
+      <button type="button" class="btn primary grow" id="btnSaveSite">Save to this device</button>
+    </div>
+    <p class="fine" style="margin-top:8px">Saved sites stay in this browser. Nothing is uploaded.</p>
+    <div id="siteList"></div>
+  </div>
+  <div class="card">
+    <h2>Export</h2>
+    <div class="row">
+      <button type="button" class="btn primary grow" id="rsHrz">Download NINA .hrz</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn grow" id="rsCsv">Download CSV</button>
+      <button type="button" class="btn grow" id="rsJson">Download JSON</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn grow" id="rsShare">Share</button>
+      <button type="button" class="btn grow" id="rsBack">Back to scan</button>
+      <button type="button" class="btn warn" id="rsRescan">Rescan</button>
+    </div>
+    <div class="note"><b>How to use in NINA.</b> Options &gt; General &gt; Astrometry &gt; Custom horizon. Choose the .hrz file you downloaded.</div>
+    <p class="fine" id="rsMsg" style="margin-top:8px"></p>
   </div>
 </section>
 
@@ -281,7 +355,10 @@ var manualStack=[];
 var ori={alpha:null,beta:null,gamma:null,mode:'none',compass:null,compAcc:null,autoOff:0,offInit:false,ox:0,oy:0,t:0};
 var lastPose=null,lastFrameAz=null,lastFrameT=0,lastProc=0,hintMsg='',hintBad=false;
 var stream=null,video=null,aCanvas=null,aCtx=null,AW=144,AH=256;
-var lastDet=null,sensorDenied=false;
+var lastDet=null,sensorDenied=false,wakeLock=null;
+var sensorWaitSince=0,isBrave=false;
+var isAndroid=/Android/i.test(navigator.userAgent||'');
+var SITES_KEY='meba-planner-sites-v1';
 
 var $=function(id){return document.getElementById(id);};
 
@@ -313,9 +390,20 @@ function onOri(e,isAbs){
     }
   }else{ori.autoOff=0;}
 }
+function onAbs(e){onOri(e,true);}
+function onRel(e){onOri(e,false);}
+var oriListening=false;
 function startOrientation(){
-  window.addEventListener('deviceorientationabsolute',function(e){onOri(e,true);},true);
-  window.addEventListener('deviceorientation',function(e){onOri(e,false);},true);
+  if(oriListening)return;
+  oriListening=true;
+  window.addEventListener('deviceorientationabsolute',onAbs,true);
+  window.addEventListener('deviceorientation',onRel,true);
+}
+function stopOrientation(){
+  if(!oriListening)return;
+  oriListening=false;
+  window.removeEventListener('deviceorientationabsolute',onAbs,true);
+  window.removeEventListener('deviceorientation',onRel,true);
 }
 
 /* ===================== DATA ===================== */
@@ -381,7 +469,15 @@ function setHint(msg,bad){hintMsg=msg;hintBad=!!bad;var h=$('hintTxt');if(h){h.t
 function processFrame(now){
   if(!state.started||state.demo)return;
   var pose=poseFromOri();lastPose=pose;
-  if(!pose){setHint(sensorDenied?'Motion sensors blocked: allow Motion sensors for this site in browser settings, then reload.':'Waiting for motion sensors… move the phone a little.',true);return;}
+  if(!pose){
+    if(!sensorWaitSince)sensorWaitSince=now;
+    if(sensorDenied||(now-sensorWaitSince)>2500){
+      if($('sensorHelp').hidden)showSensorHelp();
+      setHint('Motion sensors blocked. Follow the steps above, then reload.',true);
+    }else setHint('Waiting for motion sensors… move the phone a little.',true);
+    return;
+  }
+  sensorWaitSince=0;hideSensorHelp();
   if(!video||video.readyState<2)return;
   if(now-lastProc<66)return; lastProc=now;
   // angular speed gate
@@ -451,8 +547,8 @@ function fitCanvas(c){
   return c.getContext('2d');
 }
 function currentAz(){var p=lastPose;return p?norm360(p.azStore+state.offset):null;}
-function drawLinear(){
-  var c=$('chLin');if(!c||!c.clientWidth)return;
+function drawLinear(c){
+  c=c||$('chLin');if(!c||!c.clientWidth)return;
   var g=fitCanvas(c),W=c.width,H=c.height,s=DPR;
   g.clearRect(0,0,W,H);
   var L=34*s,Rr=8*s,Tp=8*s,B=30*s,pw=W-L-Rr,ph=H-Tp-B;
@@ -496,9 +592,9 @@ function drawLinear(){
   var ca=currentAz();
   if(ca!=null){g.strokeStyle='#2dd4bf';g.lineWidth=1.5*s;g.setLineDash([]);g.beginPath();g.moveTo(X(ca),Tp);g.lineTo(X(ca),Tp+ph);g.stroke();}
 }
-function drawPolar(){
-  var c=$('chPol');if(!c||!c.clientWidth)return;
-  var cw=c.clientWidth;c.dataset.h=Math.min(cw,380);
+function drawPolar(c,maxH){
+  c=c||$('chPol');if(!c||!c.clientWidth)return;
+  var cw=c.clientWidth;c.dataset.h=Math.min(cw,maxH||380);
   var g=fitCanvas(c),W=c.width,H=c.height,s=DPR;
   g.clearRect(0,0,W,H);g.fillStyle='#0e1118';g.fillRect(0,0,W,H);
   var cx=W/2,cy=H/2,R=Math.min(W,H)/2-22*s;
@@ -554,6 +650,12 @@ function updateStats(){
   if(cv.weak)t+=' '+cv.weak+' directions are low-confidence (no clear skyline in view).';
   $('gapTxt').textContent=t;
   if(ori.mode==='relative'&&!state.demo)$('introMsg').textContent='';
+  var dh=$('doneHint');
+  if(dh&&!$('live').hidden){
+    dh.textContent=cv.pct<90
+      ?'Coverage '+cv.pct+'% — under 90%. Keep turning, or tap Done and confirm to finish with gaps.'
+      :'Tap Done to review and export.';
+  }
 }
 
 /* ===================== EXPORT ===================== */
@@ -588,14 +690,31 @@ function download(name,text,mime){
   a.href=u;a.download=name;document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(u);a.remove();},1500);
 }
-function exMsg(t){$('exMsg').textContent=t;}
+function exMsg(t){var a=$('exMsg'),b=$('rsMsg');if(a)a.textContent=t;if(b)b.textContent=t;}
+function siteSlug(){
+  var n=($('siteName')&&$('siteName').value||'').trim()||'horizon';
+  return n.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'horizon';
+}
 function doExport(kind){
   var pts=buildExport();
   if(pts.length<2){exMsg('Not enough data yet: need at least 2 points. Scan more of the horizon.');return;}
+  if($('results')&&!$('results').hidden)setStep(3);
   var stamp=new Date().toISOString().slice(0,10);
-  if(kind==='hrz'){download('meba-horizon-'+stamp+'.hrz',hrzText(pts),'text/plain');exMsg('Saved .hrz with '+pts.length+' points.');}
-  else if(kind==='json'){download('meba-horizon-'+stamp+'.json',jsonText(pts),'application/json');exMsg('Saved JSON.');}
-  else if(kind==='csv'){download('meba-horizon-'+stamp+'.csv',csvText(pts),'text/csv');exMsg('Saved CSV.');}
+  var base='meba-'+siteSlug()+'-'+stamp;
+  if(kind==='hrz'){download(base+'.hrz',hrzText(pts),'text/plain');exMsg('Saved .hrz with '+pts.length+' points.');}
+  else if(kind==='json'){download(base+'.json',jsonText(pts),'application/json');exMsg('Saved JSON.');}
+  else if(kind==='csv'){download(base+'.csv',csvText(pts),'text/csv');exMsg('Saved CSV.');}
+}
+function shareScan(){
+  var pts=buildExport();if(pts.length<2){exMsg('Not enough data yet.');return;}
+  if($('results')&&!$('results').hidden)setStep(3);
+  var t=hrzText(pts),name='meba-'+siteSlug()+'.hrz';
+  try{
+    var f=new File([t],name,{type:'text/plain'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'MEBA Planner horizon'}).catch(function(){});return;}
+    if(navigator.share){navigator.share({title:'MEBA Planner horizon',text:t}).catch(function(){});return;}
+  }catch(e){}
+  exMsg('Sharing unavailable here: use the download buttons.');
 }
 function updatePreview(){var pts=buildExport();$('prev').value=pts.length>=2?hrzText(pts):'(need at least 2 points)';}
 
@@ -618,20 +737,27 @@ function demoProfile(az){
   return 4+h(45,22,26)+h(95,10,12)+(az>150&&az<205?28:0)+h(250,18,16)+h(320,14,20)+Math.sin(az*D2R*3)*1.2;
 }
 var demoTimer=null,demoAz=0;
-function startDemo(){
-  state.demo=true;state.started=true;
-  $('intro').hidden=true;$('live').hidden=false;$('demoTag').hidden=false;
-  $('camwrap').style.setProperty('--ar','0.5625');
-  setHint('DEMO: simulated sweep with synthetic horizon data',false);
-  newBins();demoAz=0;ori.mode='demo';
+function resumeDemo(){
+  state.demo=true;state.started=true;ori.mode='demo';
+  if(demoTimer)return;
   demoTimer=setInterval(function(){
     demoAz=(demoAz+2.2)%360;
     ori.alpha=0;ori.beta=90;ori.gamma=0;
     lastPose={R:null,azRaw:demoAz,el:demoProfile(demoAz)-3,azStore:demoAz};
     for(var k=-3;k<=3;k++){var a=mod(Math.round(demoAz)+k,360);for(var r=0;r<3;r++)pushOk(a,demoProfile(a)+(Math.random()-0.5)*1.5);}
-    if(demoAz<3){setHint('DEMO complete: try Manual mode, offset slider and export',false);}
+    if(demoAz<3){setHint('DEMO complete: tap Done to review and export',false);}
   },80);
   startLoops();
+}
+function startDemo(){
+  if(demoTimer){clearInterval(demoTimer);demoTimer=null;}
+  state.demo=true;state.started=true;
+  $('intro').hidden=true;$('results').hidden=true;$('live').hidden=false;$('demoTag').hidden=false;
+  setStep(1);
+  $('camwrap').style.setProperty('--ar','0.5625');
+  setHint('DEMO: simulated sweep. Tap Done when the chart looks full.',false);
+  newBins();demoAz=0;ori.mode='demo';
+  resumeDemo();
 }
 
 /* ===================== START / UI ===================== */
@@ -646,42 +772,203 @@ function openCamera(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return Promise.reject(new Error('Camera API unavailable (needs HTTPS and a modern browser)'));
   return navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:720},height:{ideal:1280}}});
 }
-function onStart(){
+function showIntro(msg){
+  $('intro').hidden=false;$('live').hidden=true;$('results').hidden=true;
+  setStep(1);
+  if(msg!=null)$('introMsg').textContent=msg;
+}
+function beginLive(opts){
+  opts=opts||{};
   var msg=$('introMsg');msg.textContent='Requesting access…';
-  if(!window.isSecureContext){msg.textContent='This page must be opened over HTTPS for sensors and camera.';return;}
+  if(!window.isSecureContext){showIntro('This page must be opened over HTTPS for sensors and camera.');return;}
+  sensorWaitSince=0;hideSensorHelp();
+  if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}
   var sensorPs=requestSensors();
   var camP=openCamera();   // started inside the gesture
   Promise.all(sensorPs.map(function(p){return p.catch(function(e){return 'denied';});})).then(function(res){
     var denied=res.some(function(r){return r==='denied';});
-    if(denied&&/iPhone|iPad|iPod/.test(navigator.userAgent)){msg.textContent='Motion/orientation access was denied. On iPhone: Settings → Safari → Motion & Orientation Access, then reload.';camP.then(function(s){s.getTracks().forEach(function(t){t.stop();});}).catch(function(){});return;}
+    if(denied&&/iPhone|iPad|iPod/.test(navigator.userAgent)){
+      showIntro('Motion/orientation access was denied. On iPhone: Settings → Safari → Motion & Orientation Access, then reload.');
+      camP.then(function(s){s.getTracks().forEach(function(t){t.stop();});}).catch(function(){});
+      return;
+    }
     if(denied)sensorDenied=true;
     startOrientation();
     return camP.then(function(s){
-      stream=s;state.started=true;
-      $('intro').hidden=true;$('live').hidden=false;
+      stream=s;state.started=true;state.demo=false;
+      $('intro').hidden=true;$('results').hidden=true;$('live').hidden=false;$('demoTag').hidden=true;
+      setStep(1);
       video=$('vid');video.srcObject=s;
       video.onloadedmetadata=function(){
         var ar=video.videoWidth/video.videoHeight;$('camwrap').style.setProperty('--ar',ar.toFixed(4));
         video.play().catch(function(){});
       };
-      aCanvas=document.createElement('canvas');aCanvas.width=AW;aCanvas.height=AH;aCtx=aCanvas.getContext('2d',{willReadFrequently:true});
-      setHint('Waiting for sensors…',true);
-      try{if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(function(){});}catch(e){}
+      if(!aCanvas){aCanvas=document.createElement('canvas');aCanvas.width=AW;aCanvas.height=AH;aCtx=aCanvas.getContext('2d',{willReadFrequently:true});}
+      setHint(sensorDenied?'Motion sensors blocked. Follow the steps above, then reload.':'Waiting for sensors…',true);
+      if(sensorDenied)showSensorHelp();
+      try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(w){wakeLock=w;}).catch(function(){});}catch(e){}
       try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('portrait').catch(function(){});}catch(e){}
-      if(load())syncControls();
+      if(!opts.skipLoad&&load())syncControls();
       startLoops();
     },function(err){
-      msg.textContent='Camera unavailable: '+(err&&err.message?err.message:err)+'. Allow camera access and try again.';
+      showIntro('Camera unavailable: '+(err&&err.message?err.message:err)+'. Allow camera access and try again.');
     });
   });
   // if sensors needed no permission (Android) the Promise.all above resolves immediately
+}
+function onStart(){beginLive();}
+function stopCapture(){
+  if(demoTimer){clearInterval(demoTimer);demoTimer=null;}
+  if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}
+  if(video){try{video.pause();}catch(e){}video.srcObject=null;}
+  stopOrientation();
+  if(wakeLock){try{wakeLock.release();}catch(e){}wakeLock=null;}
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(e){}
+  state.started=false;
+  sensorWaitSince=0;
+}
+function horizonExtremes(){
+  var mask=computeMask(1,false),hi=null,lo=null,anyHi=null,anyLo=null,i,m;
+  for(i=0;i<mask.length;i++){
+    m=mask[i];
+    if(m.alt==null)continue;
+    if(!anyHi||m.alt>anyHi.alt)anyHi=m;
+    if(!anyLo||m.alt<anyLo.alt)anyLo=m;
+    if(m.src==='weak')continue;
+    if(!hi||m.alt>hi.alt)hi=m;
+    if(!lo||m.alt<lo.alt)lo=m;
+  }
+  return {hi:hi||anyHi,lo:lo||anyLo};
+}
+function updateResultStats(){
+  var cv=coverage(),ex=horizonExtremes();
+  $('rsCov').textContent=cv.pct+'%';
+  if(ex.hi){$('rsHi').textContent=Math.round(ex.hi.alt)+'°';$('rsHiSub').textContent='az '+Math.round(norm360(ex.hi.az))+'°';}
+  else{$('rsHi').textContent='--';$('rsHiSub').textContent='';}
+  if(ex.lo){$('rsLo').textContent=Math.round(norm360(ex.lo.az))+'°';$('rsLoSub').textContent=Math.round(ex.lo.alt)+'° alt';}
+  else{$('rsLo').textContent='--';$('rsLoSub').textContent='';}
+  $('demoTagR').hidden=!state.demo;
+}
+function redrawResults(){
+  updateResultStats();
+  requestAnimationFrame(function(){drawLinear($('chLinR'));drawPolar($('chPolR'),560);});
+}
+function finishScan(){
+  var cv=coverage();
+  if(cv.pct<90){
+    if(!confirm('Coverage is '+cv.pct+'%, under 90%. Gaps will be interpolated or left out of the export. Finish anyway?'))return;
+  }
+  stopCapture();
+  hideSensorHelp();
+  $('live').hidden=true;$('intro').hidden=true;$('results').hidden=false;
+  setStep(2);
+  renderSites();
+  redrawResults();
+}
+function backToScan(){
+  $('results').hidden=true;
+  setStep(1);
+  if(state.demo){
+    $('intro').hidden=true;$('live').hidden=false;$('demoTag').hidden=false;
+    resumeDemo();
+    return;
+  }
+  beginLive({skipLoad:true});
+}
+function rescan(){
+  if(!confirm('Clear this scan and start again?'))return;
+  stopCapture();
+  newBins();manualStack=[];
+  state.demo=false;state.dirty=false;
+  lastDet=null;lastPose=null;lastFrameAz=null;
+  try{localStorage.removeItem(LS_KEY);}catch(e){}
+  $('demoTag').hidden=true;
+  exMsg('');
+  showIntro('');
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function loadSites(){
+  try{var s=JSON.parse(localStorage.getItem(SITES_KEY)||'[]');return Array.isArray(s)?s:[];}catch(e){return [];}
+}
+function writeSites(list){localStorage.setItem(SITES_KEY,JSON.stringify(list));}
+function renderSites(){
+  var el=$('siteList'),list=loadSites();
+  if(!list.length){el.innerHTML='<p class="fine" style="margin-top:10px">No saved sites yet.</p>';return;}
+  el.innerHTML=list.map(function(s){
+    var when=s.savedAt?s.savedAt.slice(0,16).replace('T',' '):'';
+    return '<div class="site-row"><div><b>'+esc(s.name)+'</b><div class="fine">'+(s.coverage!=null?s.coverage+'% · ':'')+esc(when)+(s.demo?' · demo':'')+'</div></div>'
+      +'<div class="acts"><button type="button" class="btn" data-load="'+esc(s.id)+'">Load</button>'
+      +'<button type="button" class="btn ghost" data-del="'+esc(s.id)+'">Remove</button></div></div>';
+  }).join('');
+}
+function saveSite(){
+  var name=($('siteName').value||'').trim()||'Backyard';
+  $('siteName').value=name;
+  var cv=coverage();
+  var rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:name,savedAt:new Date().toISOString(),coverage:cv.pct,
+    bins:JSON.parse(JSON.stringify(bins)),offset:state.offset,vfov:state.vfov,sens:state.sens,margin:state.margin,step:state.step,gap:state.gap,demo:!!state.demo};
+  var list=loadSites().filter(function(s){return s.name!==name;});
+  list.unshift(rec);if(list.length>30)list.length=30;
+  try{writeSites(list);exMsg('Saved “'+name+'” on this device.');setStep(3);}catch(e){exMsg('Could not save on this device (storage full or blocked).');return;}
+  renderSites();
+}
+function loadSite(id){
+  var rec=null,list=loadSites(),i;
+  for(i=0;i<list.length;i++)if(list[i].id===id)rec=list[i];
+  if(!rec||!rec.bins||rec.bins.length!==360){exMsg('Could not load that site.');return;}
+  stopCapture();
+  bins=rec.bins;
+  state.offset=rec.offset||0;state.vfov=rec.vfov||65;state.sens=rec.sens||0;state.margin=rec.margin||0;state.step=rec.step||2;state.gap=rec.gap||'interp';state.demo=!!rec.demo;state.dirty=false;
+  $('siteName').value=rec.name||'';
+  syncControls();
+  $('intro').hidden=true;$('live').hidden=true;$('results').hidden=false;
+  setStep(2);
+  redrawResults();
+  exMsg('Loaded “'+rec.name+'”.');
+}
+function removeSite(id){
+  try{writeSites(loadSites().filter(function(s){return s.id!==id;}));}catch(e){}
+  renderSites();
+}
+function sensorStepsHtml(){
+  if(isBrave){
+    return '<p><b>Brave:</b> Settings &gt; Site settings &gt; Motion sensors &gt; Allow.</p>'
+      +'<ol class="steps"><li>Open <b>Brave Settings</b></li><li>Tap <b>Site settings</b></li><li>Tap <b>Motion sensors</b> and choose <b>Allow</b></li><li>Come back and tap <b>Reload</b></li></ol>'
+      +'<p>Or open this page in <b>Chrome</b> and tap Start there.</p>';
+  }
+  if(isAndroid){
+    return '<p>The compass did not start. Allow motion sensors for this site, then reload:</p>'
+      +'<ol class="steps"><li>Tap the lock or tune icon in the address bar</li><li>Open <b>Permissions</b> or <b>Site settings</b></li><li>Set <b>Motion sensors</b> to <b>Allow</b></li><li>Tap <b>Reload</b> below, then Start</li></ol>'
+      +'<p><b>Brave:</b> Settings &gt; Site settings &gt; Motion sensors &gt; Allow. Or open this page in <b>Chrome</b>.</p>';
+  }
+  return '<p>Allow motion and orientation for this site, then reload.</p>'
+    +'<p>On iPhone: Settings &gt; Safari &gt; Motion &amp; Orientation Access.</p>';
+}
+function showSensorHelp(){
+  var body=$('sensorHelpBody'),box=$('sensorHelp');
+  if(!body||!box)return;
+  body.innerHTML=sensorStepsHtml();
+  box.hidden=false;
+}
+function hideSensorHelp(){var box=$('sensorHelp');if(box)box.hidden=true;}
+function setStep(n){
+  var root=$('stepInd');if(!root)return;
+  Array.prototype.forEach.call(root.querySelectorAll('[data-step]'),function(el){
+    var s=+el.getAttribute('data-step');
+    el.classList.toggle('on',s===n);
+    el.classList.toggle('done',s<n);
+  });
 }
 var loopsOn=false;
 function startLoops(){
   if(loopsOn)return;loopsOn=true;
   function raf(t){processFrame(t);drawOverlay();requestAnimationFrame(raf);}
   requestAnimationFrame(raf);
-  setInterval(function(){updateStats();drawLinear();drawPolar();},250);
+  setInterval(function(){
+    updateStats();
+    if(!$('live').hidden){drawLinear();drawPolar();}
+    if(!$('results').hidden){drawLinear($('chLinR'));drawPolar($('chPolR'),560);updateResultStats();}
+  },250);
   setInterval(save,3000);
   setInterval(function(){if(!$('live').hidden)updatePreview();},1500);
 }
@@ -715,6 +1002,7 @@ function wire(){
   $('btnDemo').addEventListener('click',startDemo);
   $('segMode').addEventListener('click',function(e){var v=e.target.getAttribute&&e.target.getAttribute('data-v');if(v)setMode(v);});
   $('btnRec').addEventListener('click',function(){state.rec=!state.rec;this.textContent=state.rec?'Pause':'Resume recording';});
+  $('btnDone').addEventListener('click',finishScan);
   $('btnMark').addEventListener('click',markPoint);
   $('camwrap').addEventListener('click',function(){if(state.mode==='manual')markPoint();});
   $('btnUndo').addEventListener('click',undoMark);
@@ -734,27 +1022,39 @@ function wire(){
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){exMsg('Copied .hrz text.');},function(){exMsg('Copy blocked: use the preview box below.');});
     else exMsg('Clipboard unavailable: use the preview box below.');
   });
-  $('exShare').addEventListener('click',function(){
-    var pts=buildExport();if(pts.length<2){exMsg('Not enough data yet.');return;}
-    var t=hrzText(pts),name='meba-horizon.hrz';
-    try{
-      var f=new File([t],name,{type:'text/plain'});
-      if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'MEBA Planner horizon'}).catch(function(){});return;}
-      if(navigator.share){navigator.share({title:'MEBA Planner horizon',text:t}).catch(function(){});return;}
-    }catch(e){}
-    exMsg('Sharing unavailable here: use the download buttons.');
+  $('exShare').addEventListener('click',shareScan);
+  $('btnSaveSite').addEventListener('click',saveSite);
+  $('rsHrz').addEventListener('click',function(){doExport('hrz');});
+  $('rsCsv').addEventListener('click',function(){doExport('csv');});
+  $('rsJson').addEventListener('click',function(){doExport('json');});
+  $('rsShare').addEventListener('click',shareScan);
+  $('rsBack').addEventListener('click',backToScan);
+  $('rsRescan').addEventListener('click',rescan);
+  $('btnSensorReload').addEventListener('click',function(){location.reload();});
+  $('siteList').addEventListener('click',function(e){
+    var t=e.target;if(!t||!t.getAttribute)return;
+    var id=t.getAttribute('data-load');if(id){loadSite(id);return;}
+    var del=t.getAttribute('data-del');if(del)removeSite(del);
   });
   $('btnReset').addEventListener('click',function(){
     if(!confirm('Clear the whole scan?'))return;
     newBins();manualStack=[];state.dirty=true;try{localStorage.removeItem(LS_KEY);}catch(e){}save();exMsg('Scan cleared.');
   });
   setMode('auto');
+  setStep(1);
+  renderSites();
   if(!window.isSecureContext)$('introMsg').textContent='Not secure (HTTPS): sensors and camera will not work on this address.';
   window.addEventListener('beforeunload',function(){state.dirty=true;save();});
+  try{
+    if(navigator.brave&&typeof navigator.brave.isBrave==='function'){
+      navigator.brave.isBrave().then(function(v){if(v){isBrave=true;var box=$('sensorHelp');if(box&&!box.hidden)showSensorHelp();}});
+    }
+  }catch(e){}
+  if(/Brave/i.test(navigator.userAgent||''))isBrave=true;
 }
 wire();
 // test hooks (harmless in production)
-window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,startDemo:startDemo,coverage:coverage};
+window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,startDemo:startDemo,coverage:coverage,finishScan:finishScan,horizonExtremes:horizonExtremes,showSensorHelp:showSensorHelp,sensorStepsHtml:sensorStepsHtml,setBrave:function(v){isBrave=!!v;},setAndroid:function(v){isAndroid=!!v;}};
 })();
 </script>
 </body>
