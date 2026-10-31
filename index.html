@@ -30,6 +30,7 @@ main{max-width:640px;margin:0 auto;padding:0 14px 40px}
 .brand{font-weight:700;font-size:20px;letter-spacing:.2px}
 .brand .m{color:var(--acc)} .brand .p{color:var(--text);font-weight:500;margin-left:6px}
 .tag{font-size:12px;color:var(--mut);font-family:var(--mono)}
+.btn.small{min-height:36px;padding:7px 10px;font-size:13px;font-weight:500}
 h1{font-size:24px;line-height:1.2;margin:0 0 6px;letter-spacing:-.3px}
 h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin:0 0 10px;font-weight:600}
 p{margin:0 0 10px}
@@ -86,7 +87,7 @@ textarea{width:100%;height:140px;background:#0e1118;color:var(--mut);border:1px 
 .stepind .s.on{color:#fff;background:var(--acc);border-color:var(--acc);font-weight:600}
 .stepind .s.done{color:var(--teal);border-color:rgba(45,212,191,.45)}
 .stepind .sep{color:var(--mut)}
-input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+input[type=text],input[type=number]{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
 .site-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
 .site-row .btn{min-height:38px;padding:8px 12px}
 .site-row .acts{display:flex;gap:6px;flex-shrink:0}
@@ -96,7 +97,7 @@ input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px
 <body>
 <header class="top">
   <div class="brand"><span class="m">MEBA</span><span class="p">Planner</span></div>
-  <div class="tag">Horizon scan · prototype v0.3</div>
+  <div class="tag">Horizon scan · prototype v0.4</div>
 </header>
 <nav class="stepind" id="stepInd" aria-label="Steps">
   <span class="s on" data-step="1">1 Scan</span>
@@ -109,12 +110,12 @@ input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px
 
 <section id="intro" class="card">
   <h1>Scan the sky your telescope can really see</h1>
-  <p class="mut">Stand at your scope, sweep the phone slowly through 360°, and MEBA Planner builds a horizon mask: the lowest clear altitude at every compass direction. Export it for NINA or use it in the planner.</p>
+  <p class="mut">Stand at your scope and sweep the phone slowly through 360°. MEBA Planner keeps a full azimuth × altitude sky map, including gaps under branches, and uses it to plan when a target is visible. A NINA horizon file is optional.</p>
   <ol class="steps">
     <li><b>Tap Start</b> and allow motion/orientation and camera access.</li>
     <li>Hold the phone <b>upright (portrait)</b> at the height of your scope, a few feet from steel and the mount.</li>
     <li>Turn <b>slowly</b> all the way around, keeping the skyline in the middle of the frame.</li>
-    <li>Tap <b>Done</b> to review the chart and export. Use <b>Manual mode</b> first if a gap needs a fix.</li>
+    <li>Tap <b>Done</b> to review the sky map, tonight’s target windows, and export. Use <b>Manual mode</b> if a direction needs a fix.</li>
   </ol>
   <button id="btnStart" class="btn primary big">Start scan</button>
   <div style="height:8px"></div>
@@ -183,25 +184,25 @@ input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px
     <div class="row" style="margin-top:12px">
       <div class="grow"><label class="f" style="margin-top:0">Bin size</label>
         <select id="selBin"><option value="1">1°</option><option value="2" selected>2°</option><option value="5">5°</option></select></div>
-      <div class="grow"><label class="f" style="margin-top:0">Gaps on export</label>
+      <div class="grow"><label class="f" style="margin-top:0">Missing directions on .hrz</label>
         <select id="selGap"><option value="interp" selected>Interpolate</option><option value="omit">Leave out</option></select></div>
     </div>
     <label class="f"><input type="checkbox" id="ckOv" checked> Show detected edge on camera view</label>
   </div>
 
   <div class="card">
-    <h2>Export</h2>
+    <h2>Export for MEBA Planner</h2>
     <div class="row">
-      <button class="btn primary grow" id="exHrz">NINA .hrz</button>
-      <button class="btn grow" id="exJson">JSON</button>
-      <button class="btn grow" id="exCsv">CSV</button>
+      <button class="btn primary grow" id="exJson">Download JSON</button>
+      <button class="btn primary grow" id="exCsv">Download CSV</button>
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn grow" id="exCopy">Copy .hrz text</button>
+      <button class="btn ghost small" id="exHrz">NINA .hrz</button>
+      <button class="btn ghost small" id="exCopy">Copy .hrz</button>
       <button class="btn grow" id="exShare">Share…</button>
       <button class="btn warn" id="btnReset">Reset scan</button>
     </div>
-    <div class="note">In NINA: Options → General → Astrometry → Custom Horizon, then choose the saved .hrz file. The file is plain text with one “azimuth altitude” pair per line.</div>
+    <p class="fine">JSON and CSV are the visibility grid (sky and blocked altitudes at each azimuth). NINA .hrz is optional: one conservative altitude per direction, the top of the lowest solid obstruction. NINA cannot store gaps under branches.</p>
     <details><summary>Preview .hrz</summary><textarea id="prev" readonly></textarea></details>
     <p class="fine" id="exMsg" style="margin-top:8px"></p>
   </div>
@@ -214,12 +215,30 @@ input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px
     <div style="height:10px"></div>
     <canvas id="chPolR" class="chart" data-h="420"></canvas>
     <div class="legend">
-      <span><i style="background:rgba(99,102,241,.55)"></i>Blocked (below mask)</span>
-      <span><i style="background:var(--acc)"></i>Measured edge</span>
+      <span><i style="background:rgba(99,102,241,.55)"></i>Blocked (below line)</span>
+      <span><i style="background:var(--acc)"></i>Conservative line</span>
       <span><i style="background:var(--warn)"></i>Manual point</span>
       <span><i style="background:var(--teal)"></i>Coverage / heading</span>
       <span><i style="background:rgba(45,212,191,.35)"></i>Low confidence</span>
     </div>
+    <p class="fine" style="margin-top:8px">These charts are the single conservative line. Gaps under branches are on the sky map.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="k">Coverage</div><div class="v" id="rsCov">0%</div></div>
+    <div class="stat"><div class="k">Highest block</div><div class="v" id="rsHi">--</div><div class="fine" id="rsHiSub"></div></div>
+    <div class="stat"><div class="k">Clearest</div><div class="v" id="rsLo">--</div><div class="fine" id="rsLoSub"></div></div>
+  </div>
+  <p class="fine" id="rsConf"></p>
+  <div class="card">
+    <h2>Sky map</h2>
+    <canvas id="chMap" class="chart" data-h="230"></canvas>
+    <div class="legend">
+      <span><i style="background:#6366f1"></i>Blocked</span>
+      <span><i style="background:#2a789e"></i>Sky</span>
+      <span><i style="background:#5c6b7a"></i>Low confidence</span>
+      <span><i style="background:#4f8ef7"></i>NINA line</span>
+    </div>
+    <p class="fine" id="mapNote" style="margin-top:8px">One degree of azimuth per column, from the horizon up. Open sky under a branch stays open.</p>
   </div>
   <div class="card">
     <h2>Panorama</h2>
@@ -229,12 +248,19 @@ input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px
       <button type="button" class="btn grow" id="rsPano">Download panorama</button>
     </div>
   </div>
-  <div class="stats">
-    <div class="stat"><div class="k">Coverage</div><div class="v" id="rsCov">0%</div></div>
-    <div class="stat"><div class="k">Highest block</div><div class="v" id="rsHi">--</div><div class="fine" id="rsHiSub"></div></div>
-    <div class="stat"><div class="k">Clearest</div><div class="v" id="rsLo">--</div><div class="fine" id="rsLoSub"></div></div>
+  <div class="card" id="winCard">
+    <h2>Target windows tonight</h2>
+    <p class="fine">A preview of how the planner will shoot, pause when a target goes behind something, and resume when it is clear again. A few bright targets, sampled every 5 minutes from astronomical dusk to dawn.</p>
+    <div class="row" style="margin-top:8px">
+      <div class="grow"><label class="f" for="inLat" style="margin-top:0">Latitude</label><input id="inLat" type="number" inputmode="decimal" step="0.0001" min="-90" max="90" placeholder="41.88" autocomplete="off"></div>
+      <div class="grow"><label class="f" for="inLon" style="margin-top:0">Longitude</label><input id="inLon" type="number" inputmode="decimal" step="0.0001" min="-180" max="180" placeholder="-87.63" autocomplete="off"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn grow" id="btnGeo">Use this location</button>
+    </div>
+    <p class="fine" id="geoMsg" style="margin-top:8px"></p>
+    <div id="winList"></div>
   </div>
-  <p class="fine" id="rsConf"></p>
   <div class="card">
     <h2>Save this site</h2>
     <label class="f" for="siteName">Site name</label>
@@ -246,26 +272,24 @@ input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px
     <div id="siteList"></div>
   </div>
   <div class="card">
-    <h2>Export</h2>
+    <h2>Export for MEBA Planner</h2>
     <div class="row">
-      <button type="button" class="btn primary grow" id="rsHrz">Download NINA .hrz</button>
+      <button type="button" class="btn primary grow" id="rsJson">Download JSON</button>
+      <button type="button" class="btn primary grow" id="rsCsv">Download CSV</button>
     </div>
     <div class="row" style="margin-top:8px">
-      <button type="button" class="btn grow" id="rsCsv">Download CSV</button>
-      <button type="button" class="btn grow" id="rsJson">Download JSON</button>
-    </div>
-    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn ghost small" id="rsHrz">NINA .hrz</button>
       <button type="button" class="btn grow" id="rsShare">Share</button>
       <button type="button" class="btn grow" id="rsBack">Back to scan</button>
       <button type="button" class="btn warn" id="rsRescan">Rescan</button>
     </div>
-    <div class="note"><b>How to use in NINA.</b> Options &gt; General &gt; Astrometry &gt; Custom horizon. Choose the .hrz file you downloaded.</div>
+    <p class="fine">JSON and CSV are the azimuth × altitude grid the planner reads. Optional NINA .hrz is one altitude per direction (top of the lowest solid obstruction): Options &gt; General &gt; Astrometry &gt; Custom horizon.</p>
     <p class="fine" id="rsMsg" style="margin-top:8px"></p>
   </div>
 </section>
 
 <div class="card fine">
-  <b>Prototype limits.</b> Heading comes from the phone compass (iPhone: webkitCompassHeading; Android: absolute orientation) and can be several degrees off. Altitude comes from tilt plus an assumed camera field of view. Bright walls can look like sky; dark clouds can look like obstructions; branches thinner than about a degree are ignored. Always sanity-check the result against a landmark.
+  <b>Prototype limits.</b> Heading comes from the phone compass (iPhone: webkitCompassHeading; Android: absolute orientation) and can be several degrees off. Altitude comes from tilt plus an assumed camera field of view. Bright walls can look like sky; dark clouds can look like obstructions. Gaps under branches are kept when the branch is about a degree tall or more; thinner ones can be missed. Tonight’s windows use a simple sun and star calculation, so the times can be off by a few minutes. Always sanity-check the result against a landmark.
 </div>
 </main>
 
@@ -373,13 +397,18 @@ function analyzeFrame(data,W,H,sens){
       kinds[x]=1;cols[x]=bst;
     }
   }
-  return {cols:cols,kinds:kinds,thr:thr,otsuOK:otsuOK};
+  return {cols:cols,kinds:kinds,thr:thr,otsuOK:otsuOK,T:T};
 }
 //CORE-END
 
 /* ===================== STATE ===================== */
 var LS_KEY='meba-planner-scan-v1';
-var bins=[];function newBins(){bins=[];for(var i=0;i<360;i++)bins.push({ok:[],weak:[],manual:null});}
+var ALT_N=90,GRID_N=360*ALT_N;
+var skyC=new Uint8Array(GRID_N),blkC=new Uint8Array(GRID_N),gridVer=0;
+var runCache=new Array(360),runCacheVer=-1;
+function clearGrid(){skyC.fill(0);blkC.fill(0);gridVer++;}
+var bins=[];
+function newBins(){bins=[];for(var i=0;i<360;i++)bins.push({ok:[],weak:[],manual:null});clearGrid();}
 newBins();
 var state={mode:'auto',rec:true,offset:0,vfov:65,sens:0,margin:0,step:2,gap:'interp',overlay:true,demo:false,dirty:false,started:false};
 var manualStack=[];
@@ -440,12 +469,80 @@ function stopOrientation(){
 /* ===================== DATA ===================== */
 function pushOk(i,alt){var b=bins[i].ok;b.push(alt);if(b.length>15)b.shift();state.dirty=true;}
 function pushWeak(i,alt){var b=bins[i].weak;b.push(alt);if(b.length>9)b.shift();state.dirty=true;}
+function cell(az,alt){
+  az=mod(az|0,360);alt=alt|0;
+  if(alt<0||alt>=ALT_N)return {n:0,blocked:false,conf:0,low:true};
+  var i=az*ALT_N+alt,s=skyC[i],b=blkC[i],n=s+b;
+  if(!n)return {n:0,blocked:false,conf:0,low:true};
+  var blocked=b>=s,conf=Math.max(s,b)/n;
+  return {n:n,blocked:blocked,conf:conf,low:n<2||conf<0.6};
+}
+function columnRuns(az){
+  az=mod(az|0,360);
+  if(runCacheVer!==gridVer){runCache=new Array(360);runCacheVer=gridVer;}
+  if(runCache[az])return runCache[az];
+  var runs=[],cur=null,a,c,st;
+  for(a=0;a<ALT_N;a++){
+    c=cell(az,a);
+    if(!c.n){if(cur){runs.push(cur);cur=null;}continue;}
+    st=c.blocked?'blocked':'sky';
+    if(!cur||cur.state!==st){
+      if(cur)runs.push(cur);
+      cur={from:a,to:a+1,state:st,confidence:c.conf,low:c.low,n:c.n};
+    }else{
+      cur.to=a+1;
+      if(c.conf<cur.confidence)cur.confidence=c.conf;
+      if(c.low)cur.low=true;
+      cur.n+=c.n;
+    }
+  }
+  if(cur)runs.push(cur);
+  for(a=0;a<runs.length;a++)runs[a].confidence=Math.round(runs[a].confidence*100)/100;
+  runCache[az]=runs;
+  return runs;
+}
+function lowestSolidTop(az){
+  var m=lineMeta(az);
+  return m?m.alt:null;
+}
+function lineMeta(az){
+  var runs=columnRuns(az),i,r,thin=null;
+  if(!runs.length)return null;
+  for(i=0;i<runs.length;i++){
+    r=runs[i];
+    if(r.state!=='blocked')continue;
+    if((r.to-r.from)>=2)return {alt:r.to,low:!!r.low};
+    if(!thin||r.to>thin.alt)thin={alt:r.to,low:!!r.low};
+  }
+  if(thin)return thin;
+  return {alt:0,low:!!runs[0].low};
+}
 function binValue(i){
   var b=bins[i];
   if(b.manual!=null)return {alt:Math.max(0,b.manual),src:'manual'};
-  if(b.ok.length)return {alt:Math.max(0,medianOf(b.ok)),src:'auto'};
-  if(b.weak.length)return {alt:Math.max(0,medianOf(b.weak)),src:'weak'};
-  return null;
+  var m=lineMeta(i);
+  if(!m)return null;
+  return {alt:Math.max(0,m.alt),src:m.low?'weak':'auto'};
+}
+function paintColumn(az,segs){
+  az=mod(Math.round(az),360);
+  var base=az*ALT_N,a,s,from,to,sky,n;
+  for(a=0;a<ALT_N;a++){skyC[base+a]=0;blkC[base+a]=0;}
+  for(s=0;s<segs.length;s++){
+    from=Math.max(0,segs[s].from|0);to=Math.min(ALT_N,segs[s].to|0);
+    sky=segs[s].state==='sky'||segs[s].state==='visible';
+    n=segs[s].n||4;if(n>255)n=255;
+    for(a=from;a<to;a++){if(sky)skyC[base+a]=n;else blkC[base+a]=n;}
+  }
+  gridVer++;state.dirty=true;
+}
+function addObs(az,alt,isSky){
+  az=mod(Math.round(az),360);alt=alt|0;
+  if(alt<0||alt>=ALT_N)return;
+  var i=az*ALT_N+alt;
+  if(isSky){if(skyC[i]<255)skyC[i]++;}else if(blkC[i]<255)blkC[i]++;
+  if(skyC[i]>240||blkC[i]>240){skyC[i]>>=1;blkC[i]>>=1;}
+  gridVer++;state.dirty=true;
 }
 function mod(n,m){return ((n%m)+m)%m;}
 // Build mask at the chosen step. Returns [{az,alt|null,src}] covering 0..359
@@ -520,6 +617,30 @@ function containRect(cw,ch,fw,fh){
   var s=Math.min(cw/fw,ch/fh),w=fw*s,h=fh*s;
   return {x:(cw-w)/2,y:(ch-h)/2,w:w,h:h};
 }
+function altLerp(y,yTop,aTop,yMid,aMid,yBot,aBot){
+  if(y<=yMid){var t=(yMid-yTop)?(y-yTop)/(yMid-yTop):0;return aTop+(aMid-aTop)*t;}
+  var t2=(yBot-yMid)?(y-yMid)/(yBot-yMid):0;
+  return aMid+(aBot-aMid)*t2;
+}
+function accumulateFrame(pose,det){
+  if(!pose||!pose.R||!det||!det.T)return;
+  var yTop=0.5,yMid=AH*0.5,yBot=AH-0.5,thr=det.thr,T=det.T,added=false,x,y;
+  for(x=0;x<AW;x++){
+    var rTop=pixelRay(pose.R,x+0.5,yTop,AW,AH,state.vfov);
+    var rMid=pixelRay(pose.R,x+0.5,yMid,AW,AH,state.vfov);
+    var rBot=pixelRay(pose.R,x+0.5,yBot,AW,AH,state.vfov);
+    var az=Math.round(norm360(rMid.az+ori.autoOff))%360,base=az*ALT_N;
+    for(y=0;y<AH;y+=2){
+      var alt=altLerp(y+0.5,yTop,rTop.alt,yMid,rMid.alt,yBot,rBot.alt);
+      if(alt<0||alt>=90)continue;
+      var idx=base+(alt|0),sky=T[y*AW+x]>=thr;
+      if(sky){if(skyC[idx]<255)skyC[idx]++;}else if(blkC[idx]<255)blkC[idx]++;
+      if(skyC[idx]>240||blkC[idx]>240){skyC[idx]>>=1;blkC[idx]>>=1;}
+      added=true;
+    }
+  }
+  if(added){gridVer++;state.dirty=true;}
+}
 function processFrame(now){
   if(!state.started||state.demo)return;
   var pose=poseFromOri();lastPose=pose;
@@ -553,7 +674,7 @@ function processFrame(now){
   if(fast){setHint('Slow down: turning too fast',true);return;}
   capturePano(pose,L);
   if(pose.el>65||pose.el<-15){setHint('Aim at the skyline: tilt the phone toward the horizon',true);return;}
-  var perBin={};
+  accumulateFrame(pose,det);
   var skyAll=0,obsTop=0,kept=0;
   for(var x=0;x<AW;x++){
     var kind=det.kinds[x];
@@ -562,15 +683,7 @@ function processFrame(now){
     var sample=acceptSample(ray.alt,det.cols[x],AH,pose.el,det.otsuOK);
     if(!sample)continue;
     if(kind===3)obsTop++;
-    var az=norm360(ray.az+ori.autoOff),bi=Math.round(az)%360;
-    var e=perBin[bi]||(perBin[bi]={ok:[],low:[]});
-    if(kind===3||sample.low)e.low.push(sample.alt);else e.ok.push(sample.alt);
     kept++;
-  }
-  for(var k in perBin){
-    var e2=perBin[k],i=+k;
-    if(e2.ok.length)pushOk(i,medianOf(e2.ok));
-    else if(e2.low.length)pushWeak(i,medianOf(e2.low));
   }
   if(kept===0&&skyAll>obsTop)setHint('All sky in view: tilt down until the skyline is in frame',true);
   else if(kept===0)setHint('No reliable skyline in this frame. Keep the horizon off the bottom edge.',true);
@@ -667,6 +780,16 @@ function paintPano(g,W,H,s){
     if(cx+dw/2>W)g.drawImage(f.img,cx-dw/2-W,cy-dh/2,dw,dh);
   });
   g.strokeStyle='rgba(244,246,251,.4)';g.lineWidth=1*s;g.beginPath();g.moveTo(0,Y(0));g.lineTo(W,Y(0));g.stroke();
+  g.fillStyle='rgba(99,102,241,.35)';
+  for(var daz=0;daz<360;daz++){
+    var runs=columnRuns(mod(Math.round(daz-state.offset),360)),ri;
+    for(ri=0;ri<runs.length;ri++){
+      if(runs[ri].state!=='blocked')continue;
+      var y1=Y(runs[ri].to),y2=Y(runs[ri].from);
+      g.fillRect(X(daz),Math.min(y1,y2),Math.max(1,W/360),Math.abs(y2-y1));
+    }
+  }
+  drawTracks(g,X,Y,s,H);
   var mask=computeMask(Math.max(1,state.step),true);
   g.strokeStyle='#4f8ef7';g.lineWidth=2*s;g.beginPath();
   var pen=false;
@@ -686,6 +809,66 @@ function drawPano(){
   var c=$('chPano');if(!c||!c.clientWidth)return;
   var g=fitCanvas(c);
   paintPano(g,c.width,c.height,DPR);
+}
+function drawTracks(g,X,Y,s,H){
+  if(!nightPlan)return;
+  nightPlan.targets.forEach(function(tg){
+    if(!tg.track||tg.track.length<2)return;
+    g.strokeStyle=tg.color;g.lineWidth=1.5*s;g.beginPath();
+    var pen=false,prev=null,k;
+    for(k=0;k<tg.track.length;k++){
+      var p=tg.track[k];
+      if(p.alt<0||p.alt>85){pen=false;continue;}
+      var x=X(p.az),y=Y(p.alt);
+      if(y<0||y>H){pen=false;continue;}
+      if(pen&&prev!=null&&Math.abs(angDiff(p.az,prev))>45)pen=false;
+      if(!pen)g.moveTo(x,y);else g.lineTo(x,y);
+      pen=true;prev=p.az;
+    }
+    g.stroke();
+  });
+}
+var mapCache=null;
+function drawSkyMap(){
+  var c=$('chMap');if(!c||!c.clientWidth)return;
+  var g=fitCanvas(c),W=c.width,H=c.height,s=DPR;
+  var topA=80,botA=0,L=28*s,Rr=8*s,Tp=8*s,B=22*s;
+  var pw=Math.max(1,Math.round(W-L-Rr)),ph=Math.max(1,Math.round(H-Tp-B));
+  function X(az){return L+norm360(az)/360*pw;}
+  function Y(alt){return Tp+(topA-alt)/(topA-botA)*ph;}
+  if(!mapCache||mapCache.ver!==gridVer||mapCache.w!==pw||mapCache.h!==ph||mapCache.off!==state.offset){
+    var img=g.createImageData(pw,ph),data=img.data,py,px,alt,ai,daz,saz,cv,rgb,o;
+    for(py=0;py<ph;py++){
+      alt=topA-(py/ph)*(topA-botA);ai=Math.max(0,Math.min(89,alt|0));
+      for(px=0;px<pw;px++){
+        daz=(px/pw)*360;saz=mod(Math.round(daz-state.offset),360);cv=cell(saz,ai);
+        if(!cv.n)rgb=[14,17,24];
+        else if(cv.low)rgb=cv.blocked?[70,74,96]:[60,90,104];
+        else if(cv.blocked)rgb=[99,102,241];
+        else rgb=[42,120,158];
+        o=(py*pw+px)*4;data[o]=rgb[0];data[o+1]=rgb[1];data[o+2]=rgb[2];data[o+3]=255;
+      }
+    }
+    mapCache={ver:gridVer,w:pw,h:ph,off:state.offset,img:img};
+  }
+  g.fillStyle='#0e1118';g.fillRect(0,0,W,H);
+  g.putImageData(mapCache.img,L,Tp);
+  g.font=(10*s)+'px "Geist Mono",monospace';g.fillStyle='#9aa3b5';g.textBaseline='middle';g.textAlign='right';
+  g.strokeStyle='#232836';g.lineWidth=1;
+  [0,20,40,60,80].forEach(function(a){g.beginPath();g.moveTo(L,Y(a));g.lineTo(L+pw,Y(a));g.stroke();g.fillText(a+'°',L-4*s,Y(a));});
+  g.textAlign='center';g.textBaseline='top';
+  [['N',0],['E',90],['S',180],['W',270]].forEach(function(t){g.fillText(t[0],X(t[1]),Tp+ph+4*s);});
+  var mask=computeMask(Math.max(1,state.step),false);
+  g.strokeStyle='#4f8ef7';g.lineWidth=1.5*s;g.beginPath();
+  var pen=false,i,m;
+  for(i=0;i<mask.length;i++){
+    m=mask[i];
+    if(m.alt==null){pen=false;continue;}
+    var x=X(m.az+state.step/2),y=Y(Math.max(0,Math.min(topA,m.alt)));
+    if(!pen){g.moveTo(x,y);pen=true;}else g.lineTo(x,y);
+  }
+  g.stroke();
+  drawTracks(g,X,Y,s,Tp+ph);
 }
 function whenPanoReady(fn){
   var frames=panoList(),wait=0,ran=false;
@@ -851,6 +1034,7 @@ function buildExport(){
 function hrzText(pts){
   var cv=coverage();
   var head=['# MEBA Planner horizon scan'+(state.demo?' (DEMO DATA)':''),
+    '# Optional NINA file: one conservative altitude (top of the lowest solid obstruction). Gaps under branches are in the JSON visibility grid.',
     '# Created '+new Date().toISOString()+' | bin '+state.step+'° | compass offset '+state.offset.toFixed(1)+'° | vFOV '+state.vfov+'° | margin '+state.margin.toFixed(1)+'° | coverage '+cv.pct+'%',
     '# Az Alt'];
   var lines=pts.map(function(p){return fmtAz(p.az)+' '+p.alt.toFixed(1);});
@@ -858,18 +1042,50 @@ function hrzText(pts){
   if(pts.length){var last=pts[pts.length-1];lines.push('360 '+((lines[0].split(' ')[1])||last.alt.toFixed(1)));}
   return head.concat(lines).join('\n')+'\n';
 }
+function visibilityRows(){
+  var out=[],az,runs,daz;
+  for(az=0;az<360;az++){
+    runs=columnRuns(az);
+    if(!runs.length)continue;
+    daz=norm360(az+state.offset);
+    out.push({azimuth:+daz.toFixed(1),storageAzimuth:az,intervals:runs.map(function(r){
+      return {from:r.from,to:r.to,state:r.state,confidence:r.confidence};
+    })});
+  }
+  return out;
+}
+function gridHasData(){
+  for(var i=0;i<GRID_N;i++)if(skyC[i]||blkC[i])return true;
+  return false;
+}
 function jsonText(pts){
   var cv=coverage();
-  return JSON.stringify({app:'MEBA Planner Horizon Scan',version:'0.3',demo:state.demo,created:new Date().toISOString(),
+  var body={app:'MEBA Planner Horizon Scan',version:'0.4',demo:state.demo,created:new Date().toISOString(),
+    primary:'visibility-grid',azimuthFrame:'display-compass-plus-offset',
     binDegrees:state.step,compassOffsetDegrees:state.offset,headingSource:ori.mode,verticalFovDegrees:state.vfov,
     safetyMarginDegrees:state.margin,coveragePercent:cv.pct,lowConfidenceDirections:cv.weak,
+    horizonLine:'conservative-lowest-solid',
+    visibility:visibilityRows(),
     points:pts.map(function(p){return {azimuth:+p.az.toFixed(1),altitude:+p.alt.toFixed(2),source:p.src};}),
     panorama:{stepDegrees:PAN_STEP,frames:panoList().map(function(f){
       return {headingDegrees:+(+f.az).toFixed(1),pitchDegrees:+(+f.pitch).toFixed(1),rollDegrees:+(+f.roll).toFixed(1),
         verticalFovDegrees:f.vfov,width:f.w,height:f.h,jpegBase64:String(f.jpeg||'').split(',')[1]||''};
-    })}},null,2);
+    })}};
+  if(geo.lat!=null&&isFinite(geo.lat))body.location={latitude:geo.lat,longitude:geo.lon};
+  if(nightPlan)body.targetWindows=nightPlan.targets.map(function(tg){return windowLine(tg);});
+  return JSON.stringify(body,null,2);
 }
-function csvText(pts){return 'azimuth_deg,altitude_deg,source\n'+pts.map(function(p){return p.az.toFixed(1)+','+p.alt.toFixed(2)+','+p.src;}).join('\n')+'\n';}
+function csvText(){
+  var lines=['azimuth_deg,alt_from_deg,alt_to_deg,state,confidence'],rows=visibilityRows(),i,j,r,iv;
+  for(i=0;i<rows.length;i++){
+    r=rows[i];
+    for(j=0;j<r.intervals.length;j++){
+      iv=r.intervals[j];
+      lines.push(r.azimuth.toFixed(1)+','+iv.from+','+iv.to+','+iv.state+','+iv.confidence.toFixed(2));
+    }
+  }
+  return lines.join('\n')+'\n';
+}
 function download(name,text,mime){
   var b=new Blob([text],{type:mime}),u=URL.createObjectURL(b),a=document.createElement('a');
   a.href=u;a.download=name;document.body.appendChild(a);a.click();
@@ -882,36 +1098,82 @@ function siteSlug(){
 }
 function doExport(kind){
   var pts=buildExport();
-  if(pts.length<2){exMsg('Not enough data yet: need at least 2 points. Scan more of the horizon.');return;}
+  var gridOk=gridHasData();
+  if(kind==='hrz'&&pts.length<2){exMsg('Not enough of a horizon line yet for a NINA file.');return;}
+  if(kind!=='hrz'&&!gridOk&&pts.length<2){exMsg('Not enough data yet. Scan more of the sky.');return;}
   if($('results')&&!$('results').hidden)setStep(3);
   var stamp=new Date().toISOString().slice(0,10);
   var base='meba-'+siteSlug()+'-'+stamp;
-  if(kind==='hrz'){download(base+'.hrz',hrzText(pts),'text/plain');exMsg('Saved .hrz with '+pts.length+' points.');}
-  else if(kind==='json'){download(base+'.json',jsonText(pts),'application/json');exMsg('Saved JSON'+(panoList().length?' with '+panoList().length+' panorama frames':'')+'.');}
-  else if(kind==='csv'){download(base+'.csv',csvText(pts),'text/csv');exMsg('Saved CSV.');}
+  if(kind==='hrz'){download(base+'.hrz',hrzText(pts),'text/plain');exMsg('Saved optional NINA .hrz ('+pts.length+' points, conservative line).');}
+  else if(kind==='json'){download(base+'.json',jsonText(pts),'application/json');exMsg('Saved visibility grid JSON'+(panoList().length?' with '+panoList().length+' panorama frames':'')+'.');}
+  else if(kind==='csv'){download(base+'.csv',csvText(),'text/csv');exMsg('Saved visibility grid CSV.');}
 }
 function shareScan(){
-  var pts=buildExport();if(pts.length<2){exMsg('Not enough data yet.');return;}
+  if(!gridHasData()&&buildExport().length<2){exMsg('Not enough data yet.');return;}
   if($('results')&&!$('results').hidden)setStep(3);
-  var t=hrzText(pts),name='meba-'+siteSlug()+'.hrz';
+  var t=jsonText(buildExport()),name='meba-'+siteSlug()+'-visibility.json';
   try{
-    var f=new File([t],name,{type:'text/plain'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'MEBA Planner horizon'}).catch(function(){});return;}
-    if(navigator.share){navigator.share({title:'MEBA Planner horizon',text:t}).catch(function(){});return;}
+    var f=new File([t],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'MEBA Planner visibility'}).catch(function(){});return;}
+    if(navigator.share){navigator.share({title:'MEBA Planner visibility',text:t.slice(0,4000)}).catch(function(){});return;}
   }catch(e){}
   exMsg('Sharing unavailable here: use the download buttons.');
 }
 function updatePreview(){var pts=buildExport();$('prev').value=pts.length>=2?hrzText(pts):'(need at least 2 points)';}
 
 /* ===================== PERSISTENCE ===================== */
+function u8ToB64(arr){
+  var s='',i,chunk=0x8000;
+  for(i=0;i<arr.length;i+=chunk)s+=String.fromCharCode.apply(null,arr.subarray(i,Math.min(arr.length,i+chunk)));
+  return btoa(s);
+}
+function b64ToU8(str){
+  try{
+    var bin=atob(str),out=new Uint8Array(bin.length),i;
+    for(i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+    return out;
+  }catch(e){return null;}
+}
+function legacyAlt(i){
+  var b=bins[i];
+  if(!b)return null;
+  if(b.manual!=null)return Math.max(0,b.manual);
+  if(b.ok&&b.ok.length)return Math.max(0,medianOf(b.ok));
+  if(b.weak&&b.weak.length)return Math.max(0,medianOf(b.weak));
+  return null;
+}
+function synthesizeFromBins(){
+  clearGrid();
+  var i,alt,top,skyTo,a;
+  for(i=0;i<360;i++){
+    alt=legacyAlt(i);
+    if(alt==null)continue;
+    top=Math.max(0,Math.min(89,Math.floor(alt)));
+    skyTo=Math.min(89,top+8);
+    for(a=0;a<top;a++)blkC[i*ALT_N+a]=4;
+    for(a=top;a<=skyTo;a++)skyC[i*ALT_N+a]=4;
+  }
+  gridVer++;
+}
+function applyStoredGrid(skyB64,blkB64){
+  if(skyB64&&blkB64){
+    var s=b64ToU8(skyB64),b=b64ToU8(blkB64);
+    if(s&&b&&s.length===GRID_N&&b.length===GRID_N){skyC.set(s);blkC.set(b);gridVer++;return;}
+  }
+  synthesizeFromBins();
+}
 function save(){
   if(!state.dirty||state.demo)return;
-  try{localStorage.setItem(LS_KEY,JSON.stringify({bins:bins,offset:state.offset,vfov:state.vfov,sens:state.sens,margin:state.margin,step:state.step}));state.dirty=false;}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify({bins:bins,offset:state.offset,vfov:state.vfov,sens:state.sens,margin:state.margin,step:state.step,sky:u8ToB64(skyC),blk:u8ToB64(blkC)}));state.dirty=false;}catch(e){}
 }
 function load(){
   try{
     var s=JSON.parse(localStorage.getItem(LS_KEY)||'null');
-    if(s&&s.bins&&s.bins.length===360){bins=s.bins;state.offset=s.offset||0;state.vfov=s.vfov||65;state.sens=s.sens||0;state.margin=s.margin||0;state.step=s.step||2;return true;}
+    if(s&&s.bins&&s.bins.length===360){
+      bins=s.bins;state.offset=s.offset||0;state.vfov=s.vfov||65;state.sens=s.sens||0;state.margin=s.margin||0;state.step=s.step||2;
+      applyStoredGrid(s.sky,s.blk);
+      return true;
+    }
   }catch(e){}
   return false;
 }
@@ -921,7 +1183,18 @@ function demoProfile(az){
   var h=function(c,w,a){var d=Math.abs(angDiff(az,c));return d<w?a*(1-d/w):0;};
   return 4+h(45,22,26)+h(95,10,12)+(az>150&&az<205?28:0)+h(250,18,16)+h(320,14,20)+Math.sin(az*D2R*3)*1.2;
 }
-var demoTimer=null,demoAz=0;
+var demoTimer=null,demoAz=0,demoPainted={};
+function paintDemoColumn(az){
+  var h=Math.max(0,demoProfile(az));
+  var base=Math.max(0,Math.min(60,Math.round(h)));
+  var gap=Math.abs(angDiff(az,50))<16;
+  var segs;
+  if(gap){
+    var lo=Math.min(68,base+8),hi=Math.min(74,lo+5);
+    segs=[{from:0,to:base,state:'blocked'},{from:base,to:lo,state:'sky'},{from:lo,to:hi,state:'blocked'},{from:hi,to:72,state:'sky'}];
+  }else segs=[{from:0,to:base,state:'blocked'},{from:base,to:72,state:'sky'}];
+  paintColumn(az,segs);
+}
 function resumeDemo(){
   state.demo=true;state.started=true;ori.mode='demo';
   if(demoTimer)return;
@@ -929,7 +1202,10 @@ function resumeDemo(){
     demoAz=(demoAz+2.2)%360;
     ori.alpha=0;ori.beta=90;ori.gamma=0;
     lastPose={R:null,azRaw:demoAz,el:demoProfile(demoAz)-3,azStore:demoAz};
-    for(var k=-3;k<=3;k++){var a=mod(Math.round(demoAz)+k,360);for(var r=0;r<3;r++)pushOk(a,Math.max(0,demoProfile(a)+(Math.random()-0.5)*1.5));}
+    for(var k=-3;k<=3;k++){
+      var a=mod(Math.round(demoAz)+k,360);
+      if(!demoPainted[a]){demoPainted[a]=1;paintDemoColumn(a);}
+    }
     captureSynthetic(demoAz,0);
     if(demoAz<3){setHint('DEMO complete: tap Done to review and export',false);}
   },80);
@@ -941,8 +1217,8 @@ function startDemo(){
   $('intro').hidden=true;$('results').hidden=true;$('live').hidden=false;$('demoTag').hidden=false;
   setStep(1);
   $('camwrap').style.setProperty('--ar','0.5625');
-  setHint('DEMO: simulated sweep. Tap Done when the chart looks full.',false);
-  newBins();clearPanos();demoAz=0;ori.mode='demo';
+  setHint('DEMO: simulated sweep, with a branch gap near 50°. Tap Done when the chart looks full.',false);
+  newBins();clearPanos();demoAz=0;demoPainted={};ori.mode='demo';
   resumeDemo();
 }
 
@@ -1044,14 +1320,188 @@ function updateResultStats(){
   var conf=$('rsConf');
   if(conf)conf.textContent=cv.weak?cv.weak+' directions are low confidence and are not used as Clearest.':'';
 }
+/* ===================== TONIGHT'S WINDOWS ===================== */
+var GEO_KEY='meba-planner-geo';
+var TARGETS=[
+  {name:'M31',ra:10.6847,dec:41.2686,color:'#2dd4bf'},
+  {name:'M42',ra:83.8221,dec:-5.3911,color:'#ff8b1a'},
+  {name:'M45',ra:56.8711,dec:24.1053,color:'#4f8ef7'},
+  {name:'M13',ra:250.4235,dec:36.4613,color:'#c4b5fd'}
+];
+var geo={lat:null,lon:null,asked:false};
+var nightPlan=null;
+function jdOf(date){return date.getTime()/86400000+2440587.5;}
+function gmstDeg(date){
+  var d=jdOf(date)-2451545.0;
+  return norm360(280.46061837+360.98564736629*d);
+}
+function hadecToAltAz(haDeg,dec,lat){
+  var haR=haDeg*D2R,decR=dec*D2R,latR=lat*D2R;
+  var sinAlt=Math.sin(decR)*Math.sin(latR)+Math.cos(decR)*Math.cos(latR)*Math.cos(haR);
+  var alt=Math.asin(Math.max(-1,Math.min(1,sinAlt)))*R2D;
+  var east=-Math.cos(decR)*Math.sin(haR);
+  var north=Math.sin(decR)*Math.cos(latR)-Math.cos(decR)*Math.sin(latR)*Math.cos(haR);
+  return {alt:alt,az:norm360(Math.atan2(east,north)*R2D)};
+}
+function sunEquatorial(date){
+  var d=jdOf(date)-2451545.0;
+  var g=(357.529+0.98560028*d)*D2R;
+  var q=(280.459+0.98564736*d)*D2R;
+  var L=q+(1.915*Math.sin(g)+0.020*Math.sin(2*g))*D2R;
+  var eps=(23.439-0.00000036*d)*D2R;
+  var ra=Math.atan2(Math.cos(eps)*Math.sin(L),Math.cos(L))*R2D;
+  var dec=Math.asin(Math.sin(eps)*Math.sin(L))*R2D;
+  return {ra:norm360(ra),dec:dec};
+}
+function eqToAltAz(ra,dec,lat,lon,date){
+  var lst=norm360(gmstDeg(date)+lon);
+  var ha=lst-ra;
+  if(ha>180)ha-=360;if(ha<-180)ha+=360;
+  return hadecToAltAz(ha,dec,lat);
+}
+function sunAlt(date,lat,lon){
+  var s=sunEquatorial(date);
+  return eqToAltAz(s.ra,s.dec,lat,lon,date).alt;
+}
+function findNight(lat,lon,now){
+  var step=5*60*1000,t0=now.getTime()-20*3600000,t1=now.getTime()+20*3600000;
+  var prev=sunAlt(new Date(t0),lat,lon),dusk=null,pairs=[],t,alt;
+  for(t=t0+step;t<=t1;t+=step){
+    alt=sunAlt(new Date(t),lat,lon);
+    if(prev>-18&&alt<=-18)dusk=t;
+    if(prev<=-18&&alt>-18&&dusk!=null){pairs.push({dusk:dusk,dawn:t});dusk=null;}
+    prev=alt;
+  }
+  var nowT=now.getTime(),i;
+  for(i=0;i<pairs.length;i++)if(pairs[i].dawn>nowT)return pairs[i];
+  var d0=new Date(now);d0.setHours(18,0,0,0);
+  return {dusk:d0.getTime(),dawn:d0.getTime()+12*3600000,fallback:true};
+}
+function visAt(displayAz,alt){
+  if(!(alt>=0))return 'down';
+  var store=mod(Math.round(displayAz-state.offset),360);
+  var b=bins[store];
+  if(b&&b.manual!=null)return alt<b.manual?'blocked':'visible';
+  if(alt>=90)return 'visible';
+  var c=cell(store,Math.floor(alt));
+  if(!c.n)return 'unscanned';
+  return c.blocked?'blocked':'visible';
+}
+function fmtHM(t){
+  var d=new Date(t),h=d.getHours(),m=d.getMinutes();
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+}
+function windowLine(tg){
+  if(!tg.windows||!tg.windows.length)return tg.name+': below the horizon tonight.';
+  return tg.name+': '+tg.windows.map(function(w){return fmtHM(w.start)+'\u2013'+fmtHM(w.end)+' '+w.state;}).join(', ');
+}
+function planTargets(lat,lon,now){
+  now=now||new Date();
+  var night=findNight(lat,lon,now),step=5*60*1000;
+  var targets=TARGETS.map(function(tg){
+    var samples=[],t,p,st;
+    for(t=night.dusk;t<=night.dawn;t+=step){
+      p=eqToAltAz(tg.ra,tg.dec,lat,lon,new Date(t));
+      st=p.alt<0?'down':visAt(p.az,p.alt);
+      samples.push({t:t,alt:p.alt,az:p.az,state:st});
+    }
+    var windows=[],cur=null,i,s,nextT;
+    for(i=0;i<samples.length;i++){
+      s=samples[i];
+      nextT=(i+1<samples.length)?samples[i+1].t:Math.min(night.dawn,s.t+step);
+      if(s.state==='down'){if(cur){windows.push(cur);cur=null;}continue;}
+      if(!cur||cur.state!==s.state){
+        if(cur)windows.push(cur);
+        cur={state:s.state,start:s.t,end:nextT};
+      }else cur.end=nextT;
+    }
+    if(cur)windows.push(cur);
+    var track=[],rose=false;
+    for(i=0;i<samples.length;i++){
+      if(samples[i].alt>=0)rose=true;
+      if(i%3===0&&samples[i].alt>=0)track.push(samples[i]);
+    }
+    return {name:tg.name,color:tg.color,ra:tg.ra,dec:tg.dec,windows:windows,track:track,rose:rose};
+  });
+  return {lat:lat,lon:lon,dusk:night.dusk,dawn:night.dawn,fallback:!!night.fallback,targets:targets};
+}
+function renderWindows(plan){
+  var el=$('winList'),msg=$('geoMsg');
+  if(!el)return;
+  if(!plan){
+    el.innerHTML='<p class="fine">Allow location, or enter latitude and longitude, to preview tonight.</p>';
+    return;
+  }
+  var head='<p class="fine">Astronomical night '+fmtHM(plan.dusk)+'\u2013'+fmtHM(plan.dawn)+(plan.fallback?' (fixed span, sun calculation found no twilight)':'')+'</p>';
+  el.innerHTML=head+plan.targets.map(function(tg){
+    return '<p style="margin:6px 0;font-family:var(--mono);font-size:12.5px"><span style="color:'+tg.color+'">●</span> '+esc(windowLine(tg))+'</p>';
+  }).join('');
+  if(msg&&geo.lat!=null)msg.textContent='Location '+geo.lat.toFixed(3)+'°, '+geo.lon.toFixed(3)+'°.';
+}
+function recomputePlan(){
+  if(geo.lat==null||!isFinite(geo.lat)||!isFinite(geo.lon)){nightPlan=null;renderWindows(null);return;}
+  nightPlan=planTargets(geo.lat,geo.lon,new Date());
+  renderWindows(nightPlan);
+  if($('results')&&!$('results').hidden){drawSkyMap();drawPano();}
+}
+function loadGeo(){
+  try{
+    var s=JSON.parse(localStorage.getItem(GEO_KEY)||'null');
+    if(s&&isFinite(s.lat)&&isFinite(s.lon)){geo.lat=+s.lat;geo.lon=+s.lon;}
+  }catch(e){}
+}
+function saveGeo(){
+  if(geo.lat==null)return;
+  try{localStorage.setItem(GEO_KEY,JSON.stringify({lat:geo.lat,lon:geo.lon}));}catch(e){}
+}
+function fillGeoInputs(){
+  var la=$('inLat'),lo=$('inLon');
+  if(!la||geo.lat==null)return;
+  la.value=String(geo.lat);lo.value=String(geo.lon);
+}
+function readGeoInputs(){
+  var la=parseFloat($('inLat').value),lo=parseFloat($('inLon').value);
+  if(!isFinite(la)||!isFinite(lo)||la<-90||la>90||lo<-180||lo>180)return false;
+  geo.lat=Math.round(la*10000)/10000;geo.lon=Math.round(lo*10000)/10000;
+  saveGeo();fillGeoInputs();return true;
+}
+function requestGeo(){
+  var msg=$('geoMsg');
+  if(!navigator.geolocation){if(msg)msg.textContent='This browser has no location. Enter latitude and longitude.';return;}
+  if(msg)msg.textContent='Asking for this device’s location…';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    geo.lat=Math.round(pos.coords.latitude*10000)/10000;
+    geo.lon=Math.round(pos.coords.longitude*10000)/10000;
+    geo.asked=true;saveGeo();fillGeoInputs();
+    if(msg)msg.textContent='Using this device’s location.';
+    recomputePlan();
+  },function(){
+    geo.asked=true;
+    if(msg)msg.textContent='Location permission denied. Enter latitude and longitude, then tap Use this location.';
+  },{enableHighAccuracy:false,timeout:8000,maximumAge:600000});
+}
+function ensurePlan(){
+  if(geo.lat==null)loadGeo();
+  fillGeoInputs();
+  if(geo.lat==null){
+    renderWindows(null);
+    if(!geo.asked){geo.asked=true;requestGeo();}
+    return;
+  }
+  recomputePlan();
+}
+function setGeo(lat,lon){
+  geo.lat=+lat;geo.lon=+lon;geo.asked=true;saveGeo();fillGeoInputs();recomputePlan();
+}
 function redrawResults(){
   updateResultStats();
-  requestAnimationFrame(function(){drawLinear($('chLinR'));drawPolar($('chPolR'),560);drawPano();});
+  ensurePlan();
+  requestAnimationFrame(function(){drawLinear($('chLinR'));drawPolar($('chPolR'),560);drawSkyMap();drawPano();});
 }
 function finishScan(){
   var cv=coverage();
   if(cv.pct<90){
-    if(!confirm('Coverage is '+cv.pct+'%, under 90%. Gaps will be interpolated or left out of the export. Finish anyway?'))return;
+    if(!confirm('Coverage is '+cv.pct+'%, under 90%. Unscanned directions stay unknown in the planner grid. Finish anyway?'))return;
   }
   stopCapture();
   hideSensorHelp();
@@ -1101,7 +1551,8 @@ function saveSite(){
   $('siteName').value=name;
   var cv=coverage();
   var rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:name,savedAt:new Date().toISOString(),coverage:cv.pct,
-    bins:JSON.parse(JSON.stringify(bins)),offset:state.offset,vfov:state.vfov,sens:state.sens,margin:state.margin,step:state.step,gap:state.gap,demo:!!state.demo};
+    bins:JSON.parse(JSON.stringify(bins)),offset:state.offset,vfov:state.vfov,sens:state.sens,margin:state.margin,step:state.step,gap:state.gap,demo:!!state.demo,
+    sky:u8ToB64(skyC),blk:u8ToB64(blkC)};
   var list=loadSites().filter(function(s){return s.name!==name;});
   list.unshift(rec);if(list.length>30)list.length=30;
   try{writeSites(list);exMsg('Saved “'+name+'” on this device.');setStep(3);}catch(e){exMsg('Could not save on this device (storage full or blocked).');return;}
@@ -1115,6 +1566,7 @@ function loadSite(id){
   clearPanos();
   bins=rec.bins;
   state.offset=rec.offset||0;state.vfov=rec.vfov||65;state.sens=rec.sens||0;state.margin=rec.margin||0;state.step=rec.step||2;state.gap=rec.gap||'interp';state.demo=!!rec.demo;state.dirty=false;
+  applyStoredGrid(rec.sky,rec.blk);
   $('siteName').value=rec.name||'';
   syncControls();
   $('intro').hidden=true;$('live').hidden=true;$('results').hidden=false;
@@ -1163,7 +1615,7 @@ function startLoops(){
   setInterval(function(){
     updateStats();
     if(!$('live').hidden){drawLinear();drawPolar();}
-    if(!$('results').hidden){drawLinear($('chLinR'));drawPolar($('chPolR'),560);updateResultStats();}
+    if(!$('results').hidden){drawLinear($('chLinR'));drawPolar($('chPolR'),560);drawSkyMap();updateResultStats();}
   },250);
   setInterval(save,3000);
   setInterval(function(){if(!$('live').hidden)updatePreview();},1500);
@@ -1225,7 +1677,19 @@ function wire(){
   $('rsJson').addEventListener('click',function(){doExport('json');});
   $('rsShare').addEventListener('click',shareScan);
   $('rsPano').addEventListener('click',exportPano);
-  window.addEventListener('resize',function(){layoutCamera();if($('results')&&!$('results').hidden)drawPano();});
+  $('btnGeo').addEventListener('click',function(){
+    var rawLat=$('inLat').value.trim(),rawLon=$('inLon').value.trim();
+    if((rawLat||rawLon)&&!readGeoInputs()){
+      var msg=$('geoMsg');if(msg)msg.textContent='Enter latitude from -90 to 90 and longitude from -180 to 180.';
+      return;
+    }
+    if(readGeoInputs()){geo.asked=true;recomputePlan();return;}
+    requestGeo();
+  });
+  window.addEventListener('resize',function(){
+    layoutCamera();mapCache=null;
+    if($('results')&&!$('results').hidden){drawSkyMap();drawPano();}
+  });
   $('rsBack').addEventListener('click',backToScan);
   $('rsRescan').addEventListener('click',rescan);
   $('btnSensorReload').addEventListener('click',function(){location.reload();});
@@ -1241,6 +1705,7 @@ function wire(){
   setMode('auto');
   setStep(1);
   renderSites();
+  loadGeo();fillGeoInputs();
   if(!window.isSecureContext)$('introMsg').textContent='Not secure (HTTPS): sensors and camera will not work on this address.';
   window.addEventListener('beforeunload',function(){state.dirty=true;save();});
   try{
@@ -1252,7 +1717,7 @@ function wire(){
 }
 wire();
 // test hooks (harmless in production)
-window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,frameLayout:frameLayout,acceptSample:acceptSample,hfovDeg:hfovDeg,drawFrame:drawFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,jsonText:jsonText,startDemo:startDemo,coverage:coverage,finishScan:finishScan,horizonExtremes:horizonExtremes,showSensorHelp:showSensorHelp,sensorStepsHtml:sensorStepsHtml,setBrave:function(v){isBrave=!!v;},setAndroid:function(v){isAndroid=!!v;},panos:function(){return panoList();},captureSynthetic:captureSynthetic,clearPanos:clearPanos,drawPano:drawPano,layoutCamera:layoutCamera};
+window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,frameLayout:frameLayout,acceptSample:acceptSample,hfovDeg:hfovDeg,drawFrame:drawFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,jsonText:jsonText,csvText:csvText,startDemo:startDemo,coverage:coverage,finishScan:finishScan,horizonExtremes:horizonExtremes,showSensorHelp:showSensorHelp,sensorStepsHtml:sensorStepsHtml,setBrave:function(v){isBrave=!!v;},setAndroid:function(v){isAndroid=!!v;},panos:function(){return panoList();},captureSynthetic:captureSynthetic,clearPanos:clearPanos,drawPano:drawPano,drawSkyMap:drawSkyMap,layoutCamera:layoutCamera,cell:cell,columnRuns:columnRuns,lowestSolidTop:lowestSolidTop,paintColumn:paintColumn,addObs:addObs,visAt:visAt,planTargets:planTargets,eqToAltAz:eqToAltAz,hadecToAltAz:hadecToAltAz,sunAlt:sunAlt,setGeo:setGeo,clearGrid:clearGrid,windowLine:windowLine};
 })();
 </script>
 </body>
