@@ -97,7 +97,7 @@ input[type=text],input[type=number]{width:100%;background:var(--card2);color:var
 <body>
 <header class="top">
   <div class="brand"><span class="m">MEBA</span><span class="p">Planner</span></div>
-  <div class="tag">Horizon scan · prototype v0.4</div>
+  <div class="tag">Horizon scan · prototype v0.5</div>
 </header>
 <nav class="stepind" id="stepInd" aria-label="Steps">
   <span class="s on" data-step="1">1 Scan</span>
@@ -110,12 +110,13 @@ input[type=text],input[type=number]{width:100%;background:var(--card2);color:var
 
 <section id="intro" class="card">
   <h1>Scan the sky your telescope can really see</h1>
-  <p class="mut">Stand at your scope and sweep the phone slowly through 360°. MEBA Planner keeps a full azimuth × altitude sky map, including gaps under branches, and uses it to plan when a target is visible. A NINA horizon file is optional.</p>
+  <p class="mut">Scan from your scope’s position. Two slow turns build an azimuth × altitude sky map, including real gaps under branches and roof limbs. The planner uses that grid. A NINA horizon file is optional.</p>
   <ol class="steps">
     <li><b>Tap Start</b> and allow motion/orientation and camera access.</li>
-    <li>Hold the phone <b>upright (portrait)</b> at the height of your scope, a few feet from steel and the mount.</li>
-    <li>Turn <b>slowly</b> all the way around, keeping the skyline in the middle of the frame.</li>
-    <li>Tap <b>Done</b> to review the sky map, tonight’s target windows, and export. Use <b>Manual mode</b> if a direction needs a fix.</li>
+    <li><b>Stand where the telescope stands</b>, phone upright (portrait), a few feet from steel and the mount.</li>
+    <li><b>Pass 1:</b> aim about <b>20° below the horizon</b> and turn slowly all the way around.</li>
+    <li><b>Pass 2:</b> aim about <b>50° up</b> and turn again. An optional third pass looks at the zenith.</li>
+    <li>Tap <b>Done</b> to review the sky map, tonight’s target windows, and export.</li>
   </ol>
   <button id="btnStart" class="btn primary big">Start scan</button>
   <div style="height:8px"></div>
@@ -140,8 +141,13 @@ input[type=text],input[type=number]{width:100%;background:var(--card2);color:var
   <div class="stats">
     <div class="stat"><div class="k">Heading</div><div class="v" id="stAz">--</div></div>
     <div class="stat"><div class="k">Tilt</div><div class="v" id="stEl">--</div></div>
-    <div class="stat"><div class="k">Coverage</div><div class="v" id="stCov">0%</div></div>
+    <div class="stat"><div class="k">Observed</div><div class="v" id="stCov">0%</div></div>
   </div>
+  <div class="row" style="margin-top:8px">
+    <div class="seg" id="segPass"><button type="button" data-p="1" class="on">1 · −20°</button><button type="button" data-p="2">2 · 50°</button><button type="button" data-p="3">Zenith</button></div>
+  </div>
+  <p class="fine" id="passGuide" style="margin-top:6px">Pass 1 · horizon: aim about 20° below the horizon and turn slowly from your scope.</p>
+  <p class="fine" id="qualWarn"></p>
 
   <div class="row">
     <div class="seg" id="segMode"><button data-v="auto" class="on">Auto</button><button data-v="manual">Manual</button></div>
@@ -174,7 +180,11 @@ input[type=text],input[type=number]{width:100%;background:var(--card2);color:var
     <h2>Calibration &amp; detection</h2>
     <label class="f">Compass offset <small>shifts every azimuth</small> <span class="val" id="vOff">0.0°</span></label>
     <input type="range" id="rOff" min="-45" max="45" step="0.5" value="0">
-    <div class="note">Phone compasses can be off by several degrees, worse near steel. Sun and star calibration (aim at the Sun or a known star and the app computes the offset) is planned. For now, sight a landmark with a known bearing and slide until the readout matches.</div>
+    <div class="note">Steel shifts the compass. In daylight, tap <b>Calibrate on the Sun</b>, then tap the Sun in the picture. The app sets the offset from your location and the time. Or sight a landmark and slide until the readout matches.</div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn" id="btnSun">Calibrate on the Sun</button>
+    </div>
+    <p class="fine" id="sunMsg" style="margin-top:6px"></p>
     <label class="f">Portrait vertical field of view <small>the wider axis, usually 65–70°</small> <span class="val" id="vFov">65°</span></label>
     <input type="range" id="rFov" min="40" max="90" step="1" value="65">
     <label class="f">Detection sensitivity <small>higher = more is treated as blocked</small> <span class="val" id="vSens">0</span></label>
@@ -224,7 +234,7 @@ input[type=text],input[type=number]{width:100%;background:var(--card2);color:var
     <p class="fine" style="margin-top:8px">These charts are the single conservative line. Gaps under branches are on the sky map.</p>
   </div>
   <div class="stats">
-    <div class="stat"><div class="k">Coverage</div><div class="v" id="rsCov">0%</div></div>
+    <div class="stat"><div class="k">Observed</div><div class="v" id="rsCov">0%</div></div>
     <div class="stat"><div class="k">Highest block</div><div class="v" id="rsHi">--</div><div class="fine" id="rsHiSub"></div></div>
     <div class="stat"><div class="k">Clearest</div><div class="v" id="rsLo">--</div><div class="fine" id="rsLoSub"></div></div>
   </div>
@@ -289,7 +299,7 @@ input[type=text],input[type=number]{width:100%;background:var(--card2);color:var
 </section>
 
 <div class="card fine">
-  <b>Prototype limits.</b> Heading comes from the phone compass (iPhone: webkitCompassHeading; Android: absolute orientation) and can be several degrees off. Altitude comes from tilt plus an assumed camera field of view. Bright walls can look like sky; dark clouds can look like obstructions. Gaps under branches are kept when the branch is about a degree tall or more; thinner ones can be missed. Tonight’s windows use a simple sun and star calculation, so the times can be off by a few minutes. Always sanity-check the result against a landmark.
+  <b>Prototype limits.</b> Heading comes from the phone compass and can jump near steel; frames that disagree with the image motion are dropped, and a daytime Sun tap can set the offset. Altitude comes from tilt plus an assumed field of view, and only altitudes inside that frame are written. Walls, glass, and foliage need sky color, low texture, and a smooth gradient, and a second overlapping frame must agree, or they stay blocked; real blue gaps under limbs stay open. Thin branches can still be missed. Window times are local, including the repeated hour when daylight saving ends. Always sanity-check against a landmark.
 </div>
 </main>
 
@@ -348,56 +358,64 @@ function medianOf(arr){
   var s=arr.slice().sort(function(a,b){return a-b;}),m=s.length>>1;
   return s.length%2?s[m]:(s[m-1]+s[m])/2;
 }
-// sky-ness score: brightness + blue dominance
+// Sky needs sky-like color, low texture, and a smooth vertical gradient.
+// sens is the slider (−15..15): higher treats more pixels as blocked.
+function skyPixel(r,g,b,tex,d2,sens){
+  sens=sens||0;
+  var L=0.299*r+0.587*g+0.114*b;
+  var blue=b-(r+g)*0.5;
+  var warm=(r+g)*0.5-b;
+  var foliage=g>r+6&&g>b+10;
+  var sat=Math.max(r,g,b)-Math.min(r,g,b);
+  var blueCut=10+sens*0.35, warmCut=8-sens*0.08;
+  if(!(tex<28)||!(d2<35)||foliage)return false;
+  if(blue>blueCut&&warm<warmCut)return true;
+  // Bright haze only. Pale walls and window glass stay blocked: they are not this blue.
+  if(L>175+sens&&blue>blueCut-2&&warm<4&&sat<16&&tex<12&&d2<14)return true;
+  return false;
+}
 function analyzeFrame(data,W,H,sens){
-  var N=W*H,S=new Float32Array(N),i,x,y;
+  var N=W*H,Lum=new Float32Array(N),sky=new Uint8Array(N),i,x,y;
+  var step=Math.max(1,Math.round(W/240)),kk=Math.max(1,Math.round(H/210));
   for(i=0;i<N;i++){
-    var r=data[4*i],g=data[4*i+1],b=data[4*i+2];
-    var L=(0.299*r+0.587*g+0.114*b)/255;
-    var bl=(b-(r+g)/2)/255*3; bl=bl<0?0:bl>1?1:bl;
-    S[i]=0.65*L+0.35*bl;
+    var r0=data[4*i],g0=data[4*i+1],b0=data[4*i+2];
+    Lum[i]=0.299*r0+0.587*g0+0.114*b0;
   }
-  var T=new Float32Array(N);
-  for(y=0;y<H;y++){
-    var y0=y>0?y-1:0,y1=y<H-1?y+1:H-1;
-    for(x=0;x<W;x++){
-      var x0=x>0?x-1:0,x1=x<W-1?x+1:W-1,sum=0,c=0;
-      for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++){sum+=S[yy*W+xx];c++;}
-      T[y*W+x]=sum/c;
+  function texAt(x,y){
+    var i0=(y*W+x)*4,r=data[i0],g=data[i0+1],b=data[i0+2],acc=0,n=0,d;
+    var dirs=[[step,0],[-step,0],[0,step],[0,-step]];
+    for(d=0;d<4;d++){
+      var xx=x+dirs[d][0],yy=y+dirs[d][1];
+      if(xx<0||yy<0||xx>=W||yy>=H)continue;
+      var j=(yy*W+xx)*4;
+      acc+=Math.abs(r-data[j])+Math.abs(g-data[j+1])+Math.abs(b-data[j+2]);
+      n++;
+    }
+    return n?acc/n:999;
+  }
+  var m=Math.max(3,Math.round(H*0.03));
+  for(y=kk;y<H-kk;y++){
+    if(y<m||y>=H-m)continue;
+    for(x=step;x<W-step;x++){
+      var i1=y*W+x,r=data[4*i1],g=data[4*i1+1],b=data[4*i1+2];
+      var d2=Math.abs(Lum[(y-kk)*W+x]-2*Lum[i1]+Lum[(y+kk)*W+x]);
+      if(skyPixel(r,g,b,texAt(x,y),d2,sens))sky[i1]=1;
     }
   }
-  // Otsu split, only trusted when the frame is clearly two-class
-  var NB=64,hist=new Float32Array(NB),tot=0;
-  for(i=0;i<N;i++){var k=Math.min(NB-1,Math.floor(T[i]*NB));hist[k]++;tot++;}
-  var sumAll=0;for(i=0;i<NB;i++)sumAll+=i*hist[i];
-  var wB=0,sumB=0,best=-1,bestT=-1,muLo=0,muHi=0,wLo=0,wHi=0;
-  for(i=0;i<NB-1;i++){
-    wB+=hist[i];if(!wB)continue;var wF=tot-wB;if(!wF)break;
-    sumB+=i*hist[i];var mB=sumB/wB,mF=(sumAll-sumB)/wF;
-    var v=wB*wF*(mB-mF)*(mB-mF);
-    if(v>best){best=v;bestT=i;muLo=mB/NB;muHi=mF/NB;wLo=wB/tot;wHi=wF/tot;}
-  }
-  var thr=0.4,otsuOK=false;
-  if(bestT>=0&&wLo>0.05&&wHi>0.05&&muHi-muLo>0.2){thr=(bestT+1)/NB;otsuOK=true;}
-  thr+=sens;
-  var K=3,cols=new Int16Array(W),kinds=new Uint8Array(W);
+  var cols=new Int16Array(W),kinds=new Uint8Array(W),skyN=0;
+  for(i=0;i<N;i++)if(sky[i])skyN++;
   for(x=0;x<W;x++){
-    if(T[x]<thr&&T[W+x]<thr&&T[2*W+x]<thr){kinds[x]=3;cols[x]=0;continue;}
+    var topBlocked=true,yy;
+    for(yy=m;yy<m+3&&yy<H-m;yy++)if(sky[yy*W+x])topBlocked=false;
+    if(topBlocked){kinds[x]=3;cols[x]=m;continue;}
     var run=0,found=-1;
-    for(y=0;y<H;y++){
-      if(T[y*W+x]<thr){run++;if(run>=K){found=y-K+1;break;}}else run=0;
+    for(y=m;y<H-m;y++){
+      if(!sky[y*W+x]){run++;if(run>=3){found=y-2;break;}}else run=0;
     }
-    if(found<0){kinds[x]=2;cols[x]=H-1;}
-    else if(found<2){kinds[x]=3;cols[x]=0;}
-    else{
-      var bst=found,bd=0;
-      for(var q=Math.max(1,found-4);q<=Math.min(H-1,found+2);q++){
-        var d=T[(q-1)*W+x]-T[q*W+x];if(d>bd){bd=d;bst=q;}
-      }
-      kinds[x]=1;cols[x]=bst;
-    }
+    if(found<0){kinds[x]=2;cols[x]=H-m-1;}
+    else{kinds[x]=1;cols[x]=found;}
   }
-  return {cols:cols,kinds:kinds,thr:thr,otsuOK:otsuOK,T:T};
+  return {cols:cols,kinds:kinds,thr:0,otsuOK:skyN>N*0.04&&skyN<N*0.92,sky:sky};
 }
 //CORE-END
 
@@ -405,12 +423,14 @@ function analyzeFrame(data,W,H,sens){
 var LS_KEY='meba-planner-scan-v1';
 var ALT_N=90,GRID_N=360*ALT_N;
 var skyC=new Uint8Array(GRID_N),blkC=new Uint8Array(GRID_N),gridVer=0;
+var colSeen=new Uint32Array(360),voteStamp=new Int32Array(GRID_N),skyAgree=new Int32Array(GRID_N),frameStamp=1;
 var runCache=new Array(360),runCacheVer=-1;
-function clearGrid(){skyC.fill(0);blkC.fill(0);gridVer++;}
+function clearGrid(){skyC.fill(0);blkC.fill(0);colSeen.fill(0);skyAgree.fill(0);gridVer++;}
 var bins=[];
 function newBins(){bins=[];for(var i=0;i<360;i++)bins.push({ok:[],weak:[],manual:null});clearGrid();}
 newBins();
-var state={mode:'auto',rec:true,offset:0,vfov:65,sens:0,margin:0,step:2,gap:'interp',overlay:true,demo:false,dirty:false,started:false};
+var state={mode:'auto',rec:true,offset:0,vfov:65,sens:0,margin:0,step:2,gap:'interp',overlay:true,demo:false,dirty:false,started:false,pass:1,sunCal:false,timeZone:'UTC'};
+try{state.timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){}
 var manualStack=[];
 var ori={alpha:null,beta:null,gamma:null,mode:'none',compass:null,compAcc:null,autoOff:0,offInit:false,ox:0,oy:0,t:0};
 var lastPose=null,lastFrameAz=null,lastFrameT=0,lastProc=0,hintMsg='',hintBad=false;
@@ -473,9 +493,9 @@ function cell(az,alt){
   az=mod(az|0,360);alt=alt|0;
   if(alt<0||alt>=ALT_N)return {n:0,blocked:false,conf:0,low:true};
   var i=az*ALT_N+alt,s=skyC[i],b=blkC[i],n=s+b;
-  if(!n)return {n:0,blocked:false,conf:0,low:true};
-  var blocked=b>=s,conf=Math.max(s,b)/n;
-  return {n:n,blocked:blocked,conf:conf,low:n<2||conf<0.6};
+  if(!n)return {n:0,blocked:false,conf:0,low:true,sure:false};
+  var blocked=b>=s,conf=Math.max(s,b)/n,sure=n>=2&&conf>=0.6;
+  return {n:n,blocked:blocked,conf:conf,low:n<3||conf<0.75,sure:sure};
 }
 function columnRuns(az){
   az=mod(az|0,360);
@@ -484,7 +504,7 @@ function columnRuns(az){
   var runs=[],cur=null,a,c,st;
   for(a=0;a<ALT_N;a++){
     c=cell(az,a);
-    if(!c.n){if(cur){runs.push(cur);cur=null;}continue;}
+    if(!c.sure){if(cur){runs.push(cur);cur=null;}continue;}
     st=c.blocked?'blocked':'sky';
     if(!cur||cur.state!==st){
       if(cur)runs.push(cur);
@@ -534,6 +554,7 @@ function paintColumn(az,segs){
     n=segs[s].n||4;if(n>255)n=255;
     for(a=from;a<to;a++){if(sky)skyC[base+a]=n;else blkC[base+a]=n;}
   }
+  colSeen[az]=Math.floor(Date.now()/1000);
   gridVer++;state.dirty=true;
 }
 function addObs(az,alt,isSky){
@@ -542,6 +563,7 @@ function addObs(az,alt,isSky){
   var i=az*ALT_N+alt;
   if(isSky){if(skyC[i]<255)skyC[i]++;}else if(blkC[i]<255)blkC[i]++;
   if(skyC[i]>240||blkC[i]>240){skyC[i]>>=1;blkC[i]>>=1;}
+  colSeen[az]=Math.floor(Date.now()/1000);
   gridVer++;state.dirty=true;
 }
 function mod(n,m){return ((n%m)+m)%m;}
@@ -573,10 +595,34 @@ function computeMask(step,fillGaps){
   }
   return out;
 }
+var SECTORS=['N','NNE','ENE','E','ESE','SSE','S','SSW','WSW','W','WNW','NNW'];
+function bandFrac(az0,alt0,alt1){
+  var seen=0,tot=0,a,alt;
+  for(a=0;a<30;a++)for(alt=alt0;alt<alt1;alt++){tot++;if(skyC[(az0+a)*ALT_N+alt]||blkC[(az0+a)*ALT_N+alt])seen++;}
+  return tot?seen/tot:0;
+}
+function coverageReport(){
+  var seen=0,i,s,low,high,both=0,missL=[],missH=[];
+  for(i=0;i<GRID_N;i++)if(skyC[i]||blkC[i])seen++;
+  for(s=0;s<12;s++){
+    low=bandFrac(s*30,0,30);high=bandFrac(s*30,45,75);
+    if(low<0.2)missL.push(SECTORS[s]);
+    if(high<0.2)missH.push(SECTORS[s]);
+    if(low>=0.2&&high>=0.2)both++;
+  }
+  var text='Observed cells '+Math.round(100*seen/GRID_N)+'% — only altitudes a frame actually covered.';
+  if(!missL.length&&!missH.length)text+=' Every sector has horizon and high-sky samples.';
+  else{
+    if(missL.length)text+=' Missing near the horizon: '+missL.join(', ')+'.';
+    if(missH.length)text+=' Missing high sky: '+missH.join(', ')+'.';
+  }
+  return {pct:Math.round(100*seen/GRID_N),sectorPct:Math.round(100*both/12),text:text,seen:seen,missL:missL,missH:missH};
+}
 function coverage(){
-  var ok=0,weak=0;
-  for(var i=0;i<360;i++){var v=binValue(i);if(!v)continue;if(v.src==='weak')weak++;else ok++;}
-  return {ok:ok,weak:weak,pct:Math.round(ok/3.6)};
+  var rep=coverageReport(),weak=0,i,v;
+  for(i=0;i<360;i++){v=binValue(i);if(v&&v.src==='weak')weak++;}
+  rep.ok=rep.seen;rep.weak=weak;
+  return rep;
 }
 function gapRanges(){
   // raw 1° coverage, shifted by offset, returns list of [start,end] az ranges with no measured data (>=6°)
@@ -622,24 +668,78 @@ function altLerp(y,yTop,aTop,yMid,aMid,yBot,aBot){
   var t2=(yBot-yMid)?(y-yMid)/(yBot-yMid):0;
   return aMid+(aBot-aMid)*t2;
 }
-function accumulateFrame(pose,det){
-  if(!pose||!pose.R||!det||!det.T)return;
-  var yTop=0.5,yMid=AH*0.5,yBot=AH-0.5,thr=det.thr,T=det.T,added=false,x,y;
-  for(x=0;x<AW;x++){
-    var rTop=pixelRay(pose.R,x+0.5,yTop,AW,AH,state.vfov);
-    var rMid=pixelRay(pose.R,x+0.5,yMid,AW,AH,state.vfov);
-    var rBot=pixelRay(pose.R,x+0.5,yBot,AW,AH,state.vfov);
-    var az=Math.round(norm360(rMid.az+ori.autoOff))%360,base=az*ALT_N;
-    for(y=0;y<AH;y+=2){
-      var alt=altLerp(y+0.5,yTop,rTop.alt,yMid,rMid.alt,yBot,rBot.alt);
-      if(alt<0||alt>=90)continue;
-      var idx=base+(alt|0),sky=T[y*AW+x]>=thr;
-      if(sky){if(skyC[idx]<255)skyC[idx]++;}else if(blkC[idx]<255)blkC[idx]++;
+var PASSES=[
+  {pitch:-20,tol:12,hint:'Pass 1 · horizon: aim about 20° below the horizon and turn slowly from your scope.'},
+  {pitch:50,tol:14,hint:'Pass 2 · high sky: aim about 50° up and turn slowly.'},
+  {pitch:88,tol:12,hint:'Optional zenith pass: aim straight up and turn slowly.'}
+];
+function frameAltLimit(){
+  var halfV=state.vfov*0.5*D2R;
+  var halfH=Math.atan(Math.tan(halfV)*(AW/Math.max(1,AH)));
+  return Math.atan(Math.sqrt(Math.tan(halfV)*Math.tan(halfV)+Math.tan(halfH)*Math.tan(halfH)))*R2D+2.5;
+}
+function accumulateFrame(pose,det,now){
+  if(!pose||!pose.R||!det||!det.sky)return;
+  var margin=Math.max(3,Math.round(Math.min(AW,AH)*0.03));
+  var lim=frameAltLimit(),sky=det.sky,added=false,x,y;
+  var yA=margin+0.5,yB=AH*0.5,yC=AH-margin-0.5;
+  if(!(yC>yA))return;
+  frameStamp++;if(frameStamp>2e9)frameStamp=1;
+  var stamp=frameStamp;
+  for(x=margin;x<AW-margin;x++){
+    var rA=pixelRay(pose.R,x+0.5,yA,AW,AH,state.vfov);
+    var rB=pixelRay(pose.R,x+0.5,yB,AW,AH,state.vfov);
+    var rC=pixelRay(pose.R,x+0.5,yC,AW,AH,state.vfov);
+    var lo=Math.max(Math.min(rA.alt,rB.alt,rC.alt),pose.el-lim);
+    var hi=Math.min(Math.max(rA.alt,rB.alt,rC.alt),pose.el+lim);
+    if(!(hi>lo))continue;
+    var az=Math.round(norm360(rB.az+ori.autoOff))%360,base=az*ALT_N,wrote=false;
+    for(y=margin;y<AH-margin;y+=2){
+      var alt=altLerp(y+0.5,yA,rA.alt,yB,rB.alt,yC,rC.alt);
+      if(alt<lo||alt>hi||alt<0||alt>=90)continue;
+      var idx=base+(alt|0);
+      if(voteStamp[idx]===stamp)continue;
+      voteStamp[idx]=stamp;
+      // Sky counts only when the previous overlapping frame also called this cell sky.
+      if(sky[y*AW+x]){
+        if(skyAgree[idx]===stamp-1){if(skyC[idx]<255)skyC[idx]++;wrote=true;}
+        skyAgree[idx]=stamp;
+      }else{
+        if(blkC[idx]<255)blkC[idx]++;
+        skyAgree[idx]=0;
+        wrote=true;
+      }
       if(skyC[idx]>240||blkC[idx]>240){skyC[idx]>>=1;blkC[idx]>>=1;}
-      added=true;
     }
+    if(wrote){colSeen[az]=Math.floor((now||Date.now())/1000);added=true;}
   }
   if(added){gridVer++;state.dirty=true;}
+}
+var prevProfile=null,prevProfileAz=null,compassBad=0;
+function lumaProfile(data,W,H){
+  var bins=new Float32Array(32),y0=(H*0.35)|0,y1=(H*0.65)|0,x,y,bi,s,c,i;
+  for(x=0;x<W;x+=2){
+    bi=Math.min(31,(x*32/W)|0);s=0;c=0;
+    for(y=y0;y<y1;y+=4){i=(y*W+x)*4;s+=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];c++;}
+    bins[bi]+=c?s/c:0;
+  }
+  return bins;
+}
+function compassMismatch(data,W,H,az){
+  var prof=lumaProfile(data,W,H),drop=false;
+  if(prevProfile&&prevProfileAz!=null){
+    var best=0,bestS=-1e18,sh,s,n,i,j;
+    for(sh=-4;sh<=4;sh++){
+      s=0;n=0;
+      for(i=0;i<32;i++){j=i+sh;if(j<0||j>=32)continue;s+=prevProfile[i]*prof[j];n++;}
+      if(n&&s>bestS){bestS=s;best=sh;}
+    }
+    var imageDeg=Math.abs(best/32*hfovDeg(state.vfov,W,H));
+    var headDeg=Math.abs(angDiff(az,prevProfileAz));
+    if(imageDeg>2&&headDeg>2&&Math.abs(imageDeg-headDeg)>10)drop=true;
+  }
+  prevProfile=prof;prevProfileAz=az;
+  return drop;
 }
 function processFrame(now){
   if(!state.started||state.demo)return;
@@ -668,13 +768,23 @@ function processFrame(now){
   AH=ah;
   drawFrame(aCtx,video,AW,AH,L.rotate);
   var img=aCtx.getImageData(0,0,AW,AH);
-  var det=analyzeFrame(img.data,AW,AH,state.sens/100);
+  var det=analyzeFrame(img.data,AW,AH,state.sens);
   lastDet=det;lastLayout=L;
   if(state.mode!=='auto'||!state.rec){setHint(state.mode==='manual'?'Manual: aim the crosshair at the top of the obstruction, then tap Mark.':'Paused',false);return;}
   if(fast){setHint('Slow down: turning too fast',true);return;}
   capturePano(pose,L);
-  if(pose.el>65||pose.el<-15){setHint('Aim at the skyline: tilt the phone toward the horizon',true);return;}
-  accumulateFrame(pose,det);
+  if(pose.el<-40){setHint('Point the phone toward the sky, not the ground.',true);return;}
+  var pass=PASSES[(state.pass||1)-1],roll=ori.gamma||0,bits=[];
+  var dropped=compassMismatch(img.data,AW,AH,pose.azStore);
+  if(dropped)compassBad=Math.min(8,compassBad+1);else compassBad=Math.max(0,compassBad-1);
+  if(compassBad>=3)bits.push('Compass unstable (metal nearby?).');
+  if(Math.abs(roll)>8)bits.push('Roll '+roll.toFixed(0)+'° — hold the phone upright.');
+  if(Math.abs(pose.el-pass.pitch)>pass.tol)bits.push((pose.el<pass.pitch?'Tilt up':'Tilt down')+' toward '+pass.pitch+'° (now '+pose.el.toFixed(0)+'°).');
+  if(dropped)bits.push('Frame dropped: heading step did not match the image motion.');
+  var qw=$('qualWarn');if(qw)qw.textContent=bits.filter(function(b){return b.indexOf('Tilt')<0&&b.indexOf('dropped')<0;}).join(' ');
+  if(bits.length)setHint(bits[0],true);
+  if(!dropped&&Math.abs(roll)<=20)accumulateFrame(pose,det,now);
+  if(bits.length)return;
   var skyAll=0,obsTop=0,kept=0;
   for(var x=0;x<AW;x++){
     var kind=det.kinds[x];
@@ -685,7 +795,7 @@ function processFrame(now){
     if(kind===3)obsTop++;
     kept++;
   }
-  if(kept===0&&skyAll>obsTop)setHint('All sky in view: tilt down until the skyline is in frame',true);
+  if(kept===0&&skyAll>obsTop)setHint((state.pass||1)===1?'All sky in view: tilt down until the skyline is in frame':'Scanning open sky. Keep turning slowly.',(state.pass||1)===1);
   else if(kept===0)setHint('No reliable skyline in this frame. Keep the horizon off the bottom edge.',true);
   else setHint('Scanning… keep turning slowly',false);
 }
@@ -744,7 +854,7 @@ function capturePano(pose,L){
   var ph=Math.max(16,Math.round(PAN_W*L.dispH/L.dispW));
   var jpeg;
   try{jpeg=grabJpeg(video,PAN_W,ph,L.rotate,0.55);}catch(e){return;}
-  storePano({az:Math.round(az*10)/10,pitch:Math.round(pose.el*10)/10,roll:Math.round((ori.gamma||0)*10)/10,vfov:state.vfov,w:PAN_W,h:ph,jpeg:jpeg});
+  storePano({az:Math.round(az*10)/10,pitch:Math.round(pose.el*10)/10,roll:Math.round((ori.gamma||0)*10)/10,vfov:state.vfov,w:PAN_W,h:ph,jpeg:jpeg,capturedAt:new Date().toISOString()});
 }
 function captureSynthetic(az,pitch){
   az=norm360(az);
@@ -842,7 +952,7 @@ function drawSkyMap(){
       alt=topA-(py/ph)*(topA-botA);ai=Math.max(0,Math.min(89,alt|0));
       for(px=0;px<pw;px++){
         daz=(px/pw)*360;saz=mod(Math.round(daz-state.offset),360);cv=cell(saz,ai);
-        if(!cv.n)rgb=[14,17,24];
+        if(!cv.sure)rgb=[14,17,24];
         else if(cv.low)rgb=cv.blocked?[70,74,96]:[60,90,104];
         else if(cv.blocked)rgb=[99,102,241];
         else rgb=[42,120,158];
@@ -1007,18 +1117,19 @@ function updateStats(){
   var src=ori.mode==='ios'?'iOS compass':ori.mode==='absolute'?'absolute compass':ori.mode==='relative'?'RELATIVE only':'no heading';
   if(state.demo)src='demo';
   $('hudSrc').textContent='heading: '+src;
-  var gaps=gapRanges(),t='';
-  if(cv.pct===0)t='No data yet.';
-  else if(!gaps.length)t='Full 360° covered.';
-  else t='Gaps (≥6°): '+gaps.slice(0,6).map(function(r){return Math.round(r[0])+'°–'+Math.round(r[1])+'°';}).join(', ')+(gaps.length>6?' …':'')+'. Turn toward these, or use Manual mode.';
-  if(cv.weak)t+=' '+cv.weak+' directions are low-confidence (no clear skyline in view).';
+  var gaps=gapRanges();
+  var t=cv.text||'';
+  if(cv.pct===0)t='No sky cells observed yet. Scan from your scope, pass 1 then pass 2.';
+  else if(gaps.length)t+=' Directions still without a horizon line: '+gaps.slice(0,4).map(function(r){return Math.round(r[0])+'°–'+Math.round(r[1])+'°';}).join(', ')+'.';
   $('gapTxt').textContent=t;
+  var pg=$('passGuide'),ps=PASSES[(state.pass||1)-1];
+  if(pg&&ps)pg.textContent=ps.hint+(lastPose?' Pitch now '+lastPose.el.toFixed(0)+'°.':'');
   if(ori.mode==='relative'&&!state.demo)$('introMsg').textContent='';
   var dh=$('doneHint');
   if(dh&&!$('live').hidden){
-    dh.textContent=cv.pct<90
-      ?'Coverage '+cv.pct+'% — under 90%. Keep turning, or tap Done and confirm to finish with gaps.'
-      :'Tap Done to review and export.';
+    dh.textContent=cv.sectorPct<70
+      ?'Observed '+cv.pct+'% of sky cells. '+cv.sectorPct+'% of sectors have both passes. Keep turning, or switch pass.'
+      :'Both passes cover most sectors. Tap Done to review and export.';
   }
 }
 
@@ -1048,7 +1159,7 @@ function visibilityRows(){
     runs=columnRuns(az);
     if(!runs.length)continue;
     daz=norm360(az+state.offset);
-    out.push({azimuth:+daz.toFixed(1),storageAzimuth:az,intervals:runs.map(function(r){
+    out.push({azimuth:+daz.toFixed(1),storageAzimuth:az,observedAt:colSeen[az]?new Date(colSeen[az]*1000).toISOString():null,intervals:runs.map(function(r){
       return {from:r.from,to:r.to,state:r.state,confidence:r.confidence};
     })});
   }
@@ -1060,19 +1171,27 @@ function gridHasData(){
 }
 function jsonText(pts){
   var cv=coverage();
-  var body={app:'MEBA Planner Horizon Scan',version:'0.4',demo:state.demo,created:new Date().toISOString(),
-    primary:'visibility-grid',azimuthFrame:'display-compass-plus-offset',
+  var body={app:'MEBA Planner Horizon Scan',version:'0.5',demo:state.demo,created:new Date().toISOString(),
+    timeZone:state.timeZone,primary:'visibility-grid',azimuthFrame:'display-compass-plus-offset',
     binDegrees:state.step,compassOffsetDegrees:state.offset,headingSource:ori.mode,verticalFovDegrees:state.vfov,
-    safetyMarginDegrees:state.margin,coveragePercent:cv.pct,lowConfidenceDirections:cv.weak,
+    safetyMarginDegrees:state.margin,coveragePercent:cv.pct,observedCellPercent:cv.pct,sectorCoveragePercent:cv.sectorPct,
+    compassUnstable:compassBad>=3,lowConfidenceDirections:cv.weak,
     horizonLine:'conservative-lowest-solid',
     visibility:visibilityRows(),
     points:pts.map(function(p){return {azimuth:+p.az.toFixed(1),altitude:+p.alt.toFixed(2),source:p.src};}),
     panorama:{stepDegrees:PAN_STEP,frames:panoList().map(function(f){
       return {headingDegrees:+(+f.az).toFixed(1),pitchDegrees:+(+f.pitch).toFixed(1),rollDegrees:+(+f.roll).toFixed(1),
-        verticalFovDegrees:f.vfov,width:f.w,height:f.h,jpegBase64:String(f.jpeg||'').split(',')[1]||''};
+        verticalFovDegrees:f.vfov,width:f.w,height:f.h,capturedAt:f.capturedAt||null,jpegBase64:String(f.jpeg||'').split(',')[1]||''};
     })}};
   if(geo.lat!=null&&isFinite(geo.lat))body.location={latitude:geo.lat,longitude:geo.lon};
-  if(nightPlan)body.targetWindows=nightPlan.targets.map(function(tg){return windowLine(tg);});
+  if(nightPlan){
+    body.targetWindows=nightPlan.targets.map(function(tg){return windowLine(tg);});
+    body.targetWindowUtc=nightPlan.targets.map(function(tg){
+      return {name:tg.name,windows:(tg.windows||[]).map(function(w){
+        return {state:w.state,start:new Date(w.start).toISOString(),end:new Date(w.end).toISOString()};
+      })};
+    });
+  }
   return JSON.stringify(body,null,2);
 }
 function csvText(){
@@ -1377,19 +1496,77 @@ function findNight(lat,lon,now){
   var d0=new Date(now);d0.setHours(18,0,0,0);
   return {dusk:d0.getTime(),dawn:d0.getTime()+12*3600000,fallback:true};
 }
-function visAt(displayAz,alt){
+function visAtRaw(displayAz,alt){
   if(!(alt>=0))return 'down';
   var store=mod(Math.round(displayAz-state.offset),360);
   var b=bins[store];
   if(b&&b.manual!=null)return alt<b.manual?'blocked':'visible';
-  if(alt>=90)return 'visible';
+  if(alt>=90)return 'unscanned';
   var c=cell(store,Math.floor(alt));
-  if(!c.n)return 'unscanned';
+  if(!c.sure)return 'unscanned';
   return c.blocked?'blocked':'visible';
 }
+function visAt(displayAz,alt){
+  if(!(alt>=0))return 'down';
+  var store=mod(Math.round(displayAz-state.offset),360);
+  if(bins[store]&&bins[store].manual!=null)return visAtRaw(displayAz,alt);
+  var votes={visible:0,blocked:0,unscanned:0,down:0},da,db,s,w;
+  for(da=-1;da<=1;da++)for(db=-1;db<=1;db++){
+    var a=alt+db;if(a<0||a>=90)continue;
+    s=visAtRaw(displayAz+da,a);
+    w=(da===0&&db===0)?3:1;
+    votes[s]=(votes[s]||0)+w;
+  }
+  if(!votes.visible&&!votes.blocked)return votes.down?'down':'unscanned';
+  if(votes.blocked>votes.visible&&votes.blocked>=votes.unscanned)return 'blocked';
+  if(votes.visible>votes.blocked&&votes.visible>=votes.unscanned)return 'visible';
+  return 'unscanned';
+}
+function zonedParts(utcMs,tz){
+  var dtf=new Intl.DateTimeFormat('en-US',{timeZone:tz||state.timeZone||'UTC',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'});
+  var map={};
+  dtf.formatToParts(new Date(utcMs)).forEach(function(p){if(p.type!=='literal')map[p.type]=p.value;});
+  if(map.hour==='24')map.hour='00';
+  return map;
+}
 function fmtHM(t){
-  var d=new Date(t),h=d.getHours(),m=d.getMinutes();
-  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  var ms=typeof t==='number'?t:new Date(t).getTime();
+  var tz=state.timeZone||'UTC',p=zonedParts(ms,tz);
+  var hh=p.hour.length<2?'0'+p.hour:p.hour,mm=p.minute.length<2?'0'+p.minute:p.minute,hm=hh+':'+mm;
+  var a=zonedParts(ms+3600000,tz),b=zonedParts(ms-3600000,tz);
+  var repeat=(a.hour===p.hour&&a.minute===p.minute&&a.timeZoneName!==p.timeZoneName)||(b.hour===p.hour&&b.minute===p.minute&&b.timeZoneName!==p.timeZoneName);
+  return repeat?hm+' '+p.timeZoneName:hm;
+}
+function collapseWindows(ws){
+  var out=[],i,w,prev;
+  for(i=0;i<ws.length;i++){
+    w=ws[i];if(!w)continue;
+    prev=out[out.length-1];
+    if(prev&&prev.state===w.state&&prev.end>=w.start-1000)prev.end=Math.max(prev.end,w.end);
+    else out.push({state:w.state,start:w.start,end:w.end});
+  }
+  return out;
+}
+function mergeShortWindows(ws){
+  var minMs=10*60*1000,guard=0,i,w,dur,prev,nxt,pd,nd,k,next;
+  ws=collapseWindows(ws||[]);
+  while(guard++<6){
+    var changed=false;next=[];
+    for(i=0;i<ws.length;i++){
+      w=ws[i];dur=w.end-w.start;
+      if(dur>=minMs){next.push(w);continue;}
+      prev=next.length?next[next.length-1]:null;
+      nxt=null;k=i+1;if(k<ws.length)nxt=ws[k];
+      if(prev&&nxt&&prev.state===nxt.state){prev.end=nxt.end;i=k;changed=true;continue;}
+      pd=prev?prev.end-prev.start:-1;nd=nxt?nxt.end-nxt.start:-1;
+      if(prev&&pd>=nd){prev.end=w.end;changed=true;continue;}
+      if(nxt){nxt.start=w.start;changed=true;continue;}
+      next.push(w);
+    }
+    ws=collapseWindows(next);
+    if(!changed)break;
+  }
+  return ws;
 }
 function windowLine(tg){
   if(!tg.windows||!tg.windows.length)return tg.name+': below the horizon tonight.';
@@ -1416,6 +1593,7 @@ function planTargets(lat,lon,now){
       }else cur.end=nextT;
     }
     if(cur)windows.push(cur);
+    windows=mergeShortWindows(windows);
     var track=[],rose=false;
     for(i=0;i<samples.length;i++){
       if(samples[i].alt>=0)rose=true;
@@ -1500,8 +1678,8 @@ function redrawResults(){
 }
 function finishScan(){
   var cv=coverage();
-  if(cv.pct<90){
-    if(!confirm('Coverage is '+cv.pct+'%, under 90%. Unscanned directions stay unknown in the planner grid. Finish anyway?'))return;
+  if(cv.sectorPct<70){
+    if(!confirm('Observed '+cv.pct+'% of sky cells. Only '+cv.sectorPct+'% of sectors have both a horizon pass and a high pass. '+cv.text+' Finish anyway?'))return;
   }
   stopCapture();
   hideSensorHelp();
@@ -1635,6 +1813,28 @@ function setMode(m){
     ?'Auto: keep the skyline near the middle of the frame and turn slowly. The blue line shows what the app detects as the sky edge.'
     :'Manual: point the crosshair at the top of the nearest obstruction (tree line, roof) in each direction, then tap Mark. Marks override auto data in that direction; gaps are interpolated.';
 }
+function calibrateSun(ev){
+  var pose=state.demo?null:poseFromOri();
+  if(!pose||!pose.R){setHint('Need motion sensors to calibrate on the Sun.',true);return;}
+  if(geo.lat==null)loadGeo();
+  if(geo.lat==null){setHint('Allow location, or enter it on Results, then tap the Sun again.',true);requestGeo();return;}
+  var wrap=$('camwrap'),rect=wrap.getBoundingClientRect();
+  var L=lastLayout||{dispW:9,dispH:16};
+  var box=containRect(rect.width,rect.height,L.dispW,L.dispH);
+  var x=ev.clientX-rect.left,y=ev.clientY-rect.top;
+  if(x<box.x||y<box.y||x>box.x+box.w||y>box.y+box.h){setHint('Tap the Sun inside the picture.',true);return;}
+  var ray=pixelRay(pose.R,(x-box.x)/box.w*AW,(y-box.y)/box.h*AH,AW,AH,state.vfov);
+  var store=norm360(ray.az+ori.autoOff),now=new Date(),eq=sunEquatorial(now);
+  var sun=eqToAltAz(eq.ra,eq.dec,geo.lat,geo.lon,now);
+  if(sun.alt<5){setHint('The Sun is too low to calibrate. Try again in daylight.',true);return;}
+  var off=angDiff(sun.az,store);
+  if(Math.abs(off)>45){setHint('That offset is '+off.toFixed(0)+'°, outside ±45°. Use the slider.',true);return;}
+  off=Math.round(off*2)/2;
+  state.offset=off;state.dirty=true;state.sunCal=false;
+  syncControls();
+  setHint('Sun calibration set the compass offset to '+off.toFixed(1)+'°.',false);
+  var sm=$('sunMsg');if(sm)sm.textContent='Offset '+off.toFixed(1)+'° from the Sun at '+fmtHM(now.getTime())+'.';
+}
 function markPoint(){
   var p=state.demo?lastPose:poseFromOri();
   if(!p){setHint('No sensor data yet',true);return;}
@@ -1649,10 +1849,21 @@ function wire(){
   $('btnStart').addEventListener('click',onStart);
   $('btnDemo').addEventListener('click',startDemo);
   $('segMode').addEventListener('click',function(e){var v=e.target.getAttribute&&e.target.getAttribute('data-v');if(v)setMode(v);});
+  $('segPass').addEventListener('click',function(e){
+    var p=e.target.getAttribute&&e.target.getAttribute('data-p');if(!p)return;
+    state.pass=+p;
+    Array.prototype.forEach.call($('segPass').children,function(b){b.classList.toggle('on',b.getAttribute('data-p')===p);});
+    updateStats();
+  });
+  $('btnSun').addEventListener('click',function(){
+    state.sunCal=true;
+    setHint('Tap the Sun in the picture. Needs daylight and a location.',false);
+    var sm=$('sunMsg');if(sm)sm.textContent='Waiting for a tap on the Sun…';
+  });
   $('btnRec').addEventListener('click',function(){state.rec=!state.rec;this.textContent=state.rec?'Pause':'Resume recording';});
   $('btnDone').addEventListener('click',finishScan);
   $('btnMark').addEventListener('click',markPoint);
-  $('camwrap').addEventListener('click',function(){if(state.mode==='manual')markPoint();});
+  $('camwrap').addEventListener('click',function(ev){if(state.sunCal){calibrateSun(ev);return;}if(state.mode==='manual')markPoint();});
   $('btnUndo').addEventListener('click',undoMark);
   $('rOff').addEventListener('input',function(){state.offset=+this.value;$('vOff').textContent=state.offset.toFixed(1)+'°';state.dirty=true;});
   $('rFov').addEventListener('input',function(){state.vfov=+this.value;$('vFov').textContent=state.vfov+'°';state.dirty=true;});
@@ -1717,7 +1928,7 @@ function wire(){
 }
 wire();
 // test hooks (harmless in production)
-window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,frameLayout:frameLayout,acceptSample:acceptSample,hfovDeg:hfovDeg,drawFrame:drawFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,jsonText:jsonText,csvText:csvText,startDemo:startDemo,coverage:coverage,finishScan:finishScan,horizonExtremes:horizonExtremes,showSensorHelp:showSensorHelp,sensorStepsHtml:sensorStepsHtml,setBrave:function(v){isBrave=!!v;},setAndroid:function(v){isAndroid=!!v;},panos:function(){return panoList();},captureSynthetic:captureSynthetic,clearPanos:clearPanos,drawPano:drawPano,drawSkyMap:drawSkyMap,layoutCamera:layoutCamera,cell:cell,columnRuns:columnRuns,lowestSolidTop:lowestSolidTop,paintColumn:paintColumn,addObs:addObs,visAt:visAt,planTargets:planTargets,eqToAltAz:eqToAltAz,hadecToAltAz:hadecToAltAz,sunAlt:sunAlt,setGeo:setGeo,clearGrid:clearGrid,windowLine:windowLine};
+window.__meba={rotMatrix:rotMatrix,pixelRay:pixelRay,analyzeFrame:analyzeFrame,skyPixel:skyPixel,frameLayout:frameLayout,acceptSample:acceptSample,hfovDeg:hfovDeg,drawFrame:drawFrame,state:state,bins:function(){return bins;},computeMask:computeMask,buildExport:buildExport,hrzText:hrzText,jsonText:jsonText,csvText:csvText,startDemo:startDemo,coverage:coverage,coverageReport:coverageReport,finishScan:finishScan,horizonExtremes:horizonExtremes,showSensorHelp:showSensorHelp,sensorStepsHtml:sensorStepsHtml,setBrave:function(v){isBrave=!!v;},setAndroid:function(v){isAndroid=!!v;},panos:function(){return panoList();},captureSynthetic:captureSynthetic,clearPanos:clearPanos,drawPano:drawPano,drawSkyMap:drawSkyMap,layoutCamera:layoutCamera,cell:cell,columnRuns:columnRuns,lowestSolidTop:lowestSolidTop,paintColumn:paintColumn,addObs:addObs,visAt:visAt,visAtRaw:visAtRaw,planTargets:planTargets,eqToAltAz:eqToAltAz,hadecToAltAz:hadecToAltAz,sunAlt:sunAlt,setGeo:setGeo,clearGrid:clearGrid,windowLine:windowLine,fmtHM:fmtHM,mergeShortWindows:mergeShortWindows,frameAltLimit:frameAltLimit,accumulateFrame:accumulateFrame};
 })();
 </script>
 </body>
